@@ -163,6 +163,54 @@ for (const row of ['المستخدمون والصلاحيات', 'الفروع و
   await admin.waitForTimeout(350);
 }
 
+console.log('\n— the library —');
+await admin.getByText('المكتبة', { exact: true }).first().click();
+await admin.waitForTimeout(600);
+await admin.locator('input[type="file"]').first().setInputFiles({
+  name: 'دليل-التشغيل.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test'),
+});
+await admin.waitForTimeout(1200);
+ok('the document appears in the list', (await seen(admin)).includes('دليل-التشغيل.pdf'));
+await admin.getByLabel('حذف').first().click();
+await admin.waitForTimeout(900);
+ok('and can be removed', !(await seen(admin)).includes('دليل-التشغيل.pdf'));
+
+console.log('\n— a branch is added from the interface —');
+await admin.getByText('المزيد', { exact: true }).first().click();
+await admin.waitForTimeout(300);
+await admin.getByText('الإعدادات والإدارة').first().click();
+await admin.waitForTimeout(400);
+await admin.getByText('الفروع والتصنيفات', { exact: true }).first().click();
+await admin.waitForTimeout(500);
+await admin.getByRole('button', { name: 'فرع', exact: true }).first().click();
+await admin.waitForTimeout(400);
+const branchDialog = admin.locator('.mut-overlay');
+ok('the branch dialog opened', await branchDialog.count() > 0);
+await branchDialog.locator('input').first().fill('فرع الأحمدي');
+await branchDialog.getByText('حفظ', { exact: true }).first().click();
+await admin.waitForTimeout(900);
+ok('the branch was created', (await seen(admin)).includes('فرع الأحمدي'));
+ok('and reached the state', await admin.evaluate(() =>
+  window.ST.S.entities.some((e) => e.name === 'فرع الأحمدي')));
+
+console.log('\n— the variables survive a save —');
+await admin.locator('button[aria-label="رجوع"]').first().click();
+await admin.waitForTimeout(400);
+await admin.getByText('المتغيّرات', { exact: true }).first().click();
+await admin.waitForTimeout(600);
+const beforeVars = await admin.evaluate(() => window.ST.S.cfg.priorities.length);
+await admin.getByText(/إضافة أولوية/).first().click();
+await admin.waitForTimeout(300);
+await admin.getByText(/^حفظ/).first().click();
+await admin.waitForTimeout(1000);
+const afterVars = await admin.evaluate(() => window.ST.S.cfg.priorities.length);
+ok('a priority was added and saved', afterVars === beforeVars + 1, `${beforeVars} → ${afterVars}`);
+
+console.log('\n— the mute preference sticks —');
+await admin.evaluate(() => window.MUT.Ring.setMuted(true));
+ok('mute is remembered', await admin.evaluate(() => localStorage.getItem('mutabea.mute') === '1'));
+await admin.evaluate(() => window.MUT.Ring.setMuted(false));
+
 console.log('\n— sign out —');
 await admin.getByText('المزيد', { exact: true }).first().click();
 await admin.waitForTimeout(300);

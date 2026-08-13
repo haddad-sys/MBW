@@ -1,0 +1,51 @@
+# متابِع · Mutabea — a single service and one volume for the database.
+#
+#   cp .env.example .env    # then set JWT_SECRET, OWNER_PASSWORD and the SMTP block
+#   docker compose up -d --build
+#
+# Everything worth keeping lives in the mutabea-data volume; back up that one
+# path and the application can be rebuilt from the image at any time.
+
+services:
+  mutabea:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_FILE: /data/mutabea.db
+
+      # Without a secret, every restart signs everybody out.
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env — 32+ random bytes}
+      # The links inside every email.
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      # On when TLS is terminated in front of this container.
+      SECURE_COOKIES: ${SECURE_COOKIES:-false}
+
+      OWNER_USERNAME: ${OWNER_USERNAME:-manager}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:?set OWNER_PASSWORD in .env}
+      OWNER_EMAIL: ${OWNER_EMAIL:-}
+      OWNER_NAME: ${OWNER_NAME:-}
+      SEED_DEMO: ${SEED_DEMO:-false}
+
+      REGISTRATION_OPEN: ${REGISTRATION_OPEN:-true}
+      ALLOWED_EMAIL_DOMAINS: ${ALLOWED_EMAIL_DOMAINS:-}
+
+      MAIL_TRANSPORT: ${MAIL_TRANSPORT:-json}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_REDIRECT_ALL: ${MAIL_REDIRECT_ALL:-}
+
+      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-true}
+      TICK_SECONDS: ${TICK_SECONDS:-300}
+    volumes:
+      - mutabea-data:/data
+
+volumes:
+  mutabea-data:

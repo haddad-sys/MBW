@@ -187,10 +187,13 @@ router.post('/entities/:id/documents', requirePerm('uploadDocs'), (req, res) => 
   let stored = 0;
   for (const f of files) {
     const name = clean(f?.name) || 'ملف';
-    const size = Number(f?.size) || 0;
-    if (size > config.maxUploadBytes) continue;
+    const data = typeof f?.data === 'string' ? f.data : null;
+    /* Measured here, never taken from the caller: a declared size is a claim,
+       and the ceiling has to hold against a client that lies about it. */
+    const size = data ? Buffer.byteLength(data, 'utf8') : 0;
+    if (!data || size > config.maxUploadBytes) continue;
     stmt.run(uid('d'), req.params.id, name, clean(f?.type) || 'application/octet-stream', size,
-      typeof f?.data === 'string' ? f.data : null, req.userRow.name, at);
+      data, req.userRow.name, at);
     stored += 1;
   }
   if (!stored) return res.status(413).json({ error: 'files_too_large', maxBytes: config.maxUploadBytes });

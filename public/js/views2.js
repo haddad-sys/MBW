@@ -475,8 +475,10 @@
       api.get('/api/entities/' + encodeURIComponent(st.eid) + '/documents').then(function (res) {
         st.docs = res.documents || [];
         st.loading = false;
-        draw();
-      }).catch(function (err) { st.loading = false; st.docs = []; draw(); fail(err); });
+        /* A full redraw, not a local one: a live notification may have replaced
+           the node this closure captured while the request was in flight. */
+        render();
+      }).catch(function (err) { st.loading = false; st.docs = []; render(); fail(err); });
     }
     function fmtSz(b) {
       return b < 1024 ? toAr(b) + ' B' : (b < 1048576 ? toAr(Math.round(b / 1024)) + ' KB' : toAr((b / 1048576).toFixed(1)) + ' MB');
@@ -630,8 +632,8 @@
         st.items = res.notifications || [];
         S.unread = res.unread || 0;
         st.loading = false;
-        draw();
-      }).catch(function (err) { st.loading = false; st.items = []; draw(); fail(err); });
+        render();
+      }).catch(function (err) { st.loading = false; st.items = []; render(); fail(err); });
     }
     function draw() {
       if (!st.items || !st.items.length) {

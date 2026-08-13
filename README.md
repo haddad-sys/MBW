@@ -45,7 +45,7 @@ branches.
 
 ```bash
 npm run dev      # the same, with a watcher
-npm test         # 47 tests: the API, the approval gate, notifications, mail
+npm test         # 65 tests: the API, the approval gate, notifications, mail
 npm run reset    # drop the database and seed it again
 ```
 
@@ -136,6 +136,10 @@ and four visible tabs, and every one of them is checked on the server:
 `create · edit · changeStatus · approve · del · comment · photos · uploadDocs ·
 deleteDocs · manageEntities · manageTeam · manageUsers · settings · export`
 
+Uploads are held to `MAX_UPLOAD_BYTES`, measured on the server from the payload
+itself — a client's declared file size is never taken on trust, and the browser's
+compression is a convenience, not the control.
+
 `scope` is the important one. `all` reaches every branch; `own` exists only
 inside the account's own branch, and that filter is applied in the query, not in
 the interface. A stored permission set overrides the role for the keys it names;
@@ -180,8 +184,9 @@ public/
     views2.js     the record, the form, library, reports, alerts, more
     admin-views.js registrations, users, branches, variables, team, mail
     app.js        the router, the boot sequence, the live wiring
-test/             47 tests over the running server, plus an optional
+test/             65 tests over the running server, plus an optional
                   browser pass through the whole journey (test/browser)
+Dockerfile        a two-stage build; docker-compose.yml adds the volume
 artifact/         the published artifact this application was built from
 ```
 
@@ -193,8 +198,18 @@ by hand. The page is stamped `dir="rtl"` before first paint.
 
 ## Deploying
 
-The database is a single SQLite file — put it on a persistent volume and back up
-that one path. For anything public:
+```bash
+cp .env.example .env        # set JWT_SECRET and OWNER_PASSWORD — compose refuses to start without them
+docker compose up -d --build
+```
+
+One service, one volume. The database is a single SQLite file living in
+`mutabea-data`; back up that one path and everything else can be rebuilt from
+the image. The container runs as a non-root user and answers a health check on
+`/api/health`.
+
+Running it directly instead is the same thing without the wrapper — the database
+is still one file, so put it on persistent storage. For anything public:
 
 ```
 NODE_ENV=production

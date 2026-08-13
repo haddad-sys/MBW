@@ -1,3 +1,4 @@
+import config from '../config.js';
 import { getDb, getSetting } from '../db/index.js';
 import { uid } from '../lib/auth.js';
 import { DEF_CFG, resolvePerms, canReachEntity } from '../lib/domain.js';
@@ -386,8 +387,12 @@ export function deleteChecklist(user, id, itemId) {
 export function addPhotos(user, id, kind, images) {
   const row = requireIssue(user, id);
   if (!resolvePerms(user).photos) throw new ApiError('forbidden', 403);
-  const list = (Array.isArray(images) ? images : []).filter((s) => typeof s === 'string' && s.startsWith('data:image/'));
-  if (!list.length) throw new ApiError('no_images', 400);
+  const offered = (Array.isArray(images) ? images : []).filter((s) => typeof s === 'string' && s.startsWith('data:image/'));
+  if (!offered.length) throw new ApiError('no_images', 400);
+  /* The browser compresses before it uploads; the server does not take that on
+     trust. Anything over the ceiling is refused rather than quietly stored. */
+  const list = offered.filter((s) => Buffer.byteLength(s, 'utf8') <= config.maxUploadBytes);
+  if (!list.length) throw new ApiError('files_too_large', 413, { maxBytes: config.maxUploadBytes });
   const db = getDb();
   const stmt = db.prepare('INSERT INTO photos (id, issue_id, kind, data, by, at) VALUES (?, ?, ?, ?, ?, ?)');
   const at = Date.now();
