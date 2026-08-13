@@ -1,0 +1,2282 @@
+<title>متابع · Mutabi</title>
+
+<style>
+/* ==========================================================================
+   متابع · Mutabi — follow-up console
+   Identity carried over from the Mutabi server application: cyan-biased
+   neutrals with a petrol-teal accent, and semantic colour kept deliberately
+   separate from the accent so a state never reads as branding.
+
+   Three theme states are handled: bare :root is the complete light palette,
+   the media query covers the viewer's un-stamped "system" default, and the
+   [data-theme] stamps let an explicit choice win in both directions.
+   ========================================================================== */
+:root{
+  --bg:#EEF2F2; --panel:#FFFFFF; --panel-2:#F6FAFA; --panel-3:#EDF3F3;
+  --line:#D3DEDE; --line-soft:#E3EBEB; --line-strong:#B9C8C8; --field-line:#7F8F8F;
+  --text:#0B1E22; --text-2:#48595C; --text-3:#5C6E72;
+  --accent:#0B6E6E; --accent-2:#095858; --accent-ink:#FFFFFF; --accent-wash:#DDEEED;
+  --ok:#1B6E45; --ok-wash:#DFF0E6;
+  --warn:#96620A; --warn-wash:#FAEEDA;
+  --crit:#AE2A2A; --crit-wash:#F8E2E1;
+  --info:#1F5FA8; --info-wash:#E0EAF7;
+  --shadow-1:0 1px 2px rgba(11,30,34,.06);
+  --shadow-2:0 6px 18px -6px rgba(11,30,34,.18), 0 2px 6px rgba(11,30,34,.06);
+  --shadow-3:0 24px 60px -18px rgba(11,30,34,.35);
+  --r1:4px; --r2:8px; --r3:12px; --r4:18px;
+  --rail-w:236px;
+  --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-ar:"Noto Kufi Arabic","Noto Sans Arabic","Segoe UI",Tahoma,system-ui,sans-serif;
+  --font-mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#08131A; --panel:#0E1D25; --panel-2:#122530; --panel-3:#16303B;
+    --line:#1E3540; --line-soft:#182B34; --line-strong:#2C4A57; --field-line:#5E767F;
+    --text:#E7F0F0; --text-2:#9DB2B6; --text-3:#7C9198;
+    --accent:#3FB8AE; --accent-2:#5ACFC4; --accent-ink:#04252A; --accent-wash:#0F3134;
+    --ok:#4FB584; --ok-wash:#0F2C22;
+    --warn:#D6A24A; --warn-wash:#2E2413;
+    --crit:#E4736B; --crit-wash:#331817;
+    --info:#6BA6EC; --info-wash:#12253C;
+    --shadow-1:0 1px 2px rgba(0,0,0,.4);
+    --shadow-2:0 8px 24px -8px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.4);
+    --shadow-3:0 28px 70px -20px rgba(0,0,0,.8);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#08131A; --panel:#0E1D25; --panel-2:#122530; --panel-3:#16303B;
+  --line:#1E3540; --line-soft:#182B34; --line-strong:#2C4A57; --field-line:#5E767F;
+  --text:#E7F0F0; --text-2:#9DB2B6; --text-3:#7C9198;
+  --accent:#3FB8AE; --accent-2:#5ACFC4; --accent-ink:#04252A; --accent-wash:#0F3134;
+  --ok:#4FB584; --ok-wash:#0F2C22;
+  --warn:#D6A24A; --warn-wash:#2E2413;
+  --crit:#E4736B; --crit-wash:#331817;
+  --info:#6BA6EC; --info-wash:#12253C;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 8px 24px -8px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.4);
+  --shadow-3:0 28px 70px -20px rgba(0,0,0,.8);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:var(--font-ui);font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;min-height:100dvh;
+}
+body[dir="rtl"]{font-family:var(--font-ar)}
+button,input,select,textarea{font:inherit;color:inherit}
+/* An inline SVG with only a viewBox fills its container — every icon gets a
+   default size here and the rules below refine it. */
+svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;
+  width:17px;height:17px;flex:0 0 auto}
+h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.012em;text-wrap:balance}
+p{margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r1)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+body[dir="rtl"] .eyebrow{letter-spacing:0}
+.dim{color:var(--text-3)}
+.hidden{display:none !important}
+.spacer{flex:1}
+
+/* ------------------------------------------------------------------ shell -- */
+.shell{display:grid;grid-template-columns:var(--rail-w) 1fr;min-height:100dvh}
+.rail{background:var(--panel);border-inline-end:1px solid var(--line);display:flex;flex-direction:column;
+  position:sticky;top:0;height:100dvh;z-index:40}
+.brand{display:flex;align-items:center;gap:10px;padding:14px 16px 12px;border-bottom:1px solid var(--line-soft)}
+.brand-mark{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:0 0 auto;
+  background:linear-gradient(150deg,var(--accent),var(--accent-2));color:var(--accent-ink);
+  font-weight:800;font-size:17px;box-shadow:var(--shadow-1)}
+.brand-name{font-weight:700;font-size:16px;line-height:1.15}
+.brand-sub{font-size:10px;color:var(--text-3);letter-spacing:.07em;text-transform:uppercase;font-weight:650}
+body[dir="rtl"] .brand-sub{letter-spacing:0}
+.rail-scroll{flex:1;overflow-y:auto;padding:10px}
+.navgroup{margin-top:14px}
+.navgroup:first-child{margin-top:2px}
+.navgroup>.eyebrow{padding:6px 8px 5px}
+.nav-item{display:flex;align-items:center;gap:10px;width:100%;padding:7px 9px;border-radius:var(--r2);
+  border:0;background:none;cursor:pointer;text-align:start;color:var(--text-2);font-size:13.5px;font-weight:500;
+  transition:background .12s,color .12s}
+.nav-item svg{opacity:.85}
+.nav-item:hover{background:var(--panel-3);color:var(--text)}
+.nav-item.on{background:var(--accent-wash);color:var(--accent);font-weight:650}
+.nav-count{margin-inline-start:auto;font-family:var(--font-mono);font-size:11px;color:var(--text-3);
+  font-variant-numeric:tabular-nums}
+.nav-count.hot{color:var(--crit);font-weight:700}
+.rail-foot{border-top:1px solid var(--line-soft);padding:10px;display:flex;align-items:center;gap:9px}
+.main{display:flex;flex-direction:column;min-width:0}
+
+.topbar{position:sticky;top:0;z-index:35;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:8px;padding:10px 16px}
+.searchbox{flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:var(--panel);
+  border:1px solid var(--field-line);border-radius:var(--r3);padding:0 12px;box-shadow:var(--shadow-1)}
+.searchbox svg{width:16px;height:16px;color:var(--text-3)}
+.searchbox input{flex:1;min-width:0;border:0;background:none;padding:9px 0;outline:none}
+.top-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.clock{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:11.5px;color:var(--text-3);
+  padding:0 4px;white-space:nowrap}
+
+.icon-btn{width:34px;height:34px;border-radius:var(--r2);border:1px solid transparent;background:none;
+  color:var(--text-2);display:grid;place-items:center;cursor:pointer;position:relative;flex:0 0 auto;
+  transition:background .12s,color .12s}
+.icon-btn svg{width:18px;height:18px}
+.icon-btn:hover{background:var(--panel-3);color:var(--text)}
+.icon-btn.on{background:var(--accent-wash);color:var(--accent)}
+.dot{position:absolute;top:2px;inset-inline-end:2px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;
+  background:var(--crit);color:#fff;font-size:9.5px;font-weight:700;display:grid;place-items:center;
+  font-family:var(--font-mono);border:2px solid var(--bg)}
+
+/* The bell shakes as well as chimes — the visual half of the ring, and the
+   whole of it for anyone who muted the sound. */
+@keyframes bell-ring{
+  0%,100%{transform:rotate(0)} 10%{transform:rotate(16deg)} 20%{transform:rotate(-14deg)}
+  30%{transform:rotate(11deg)} 40%{transform:rotate(-9deg)} 50%{transform:rotate(6deg)}
+  60%{transform:rotate(-4deg)} 70%{transform:rotate(2deg)}
+}
+.icon-btn.ringing svg{animation:bell-ring .9s ease-in-out;transform-origin:50% 15%}
+.icon-btn.ringing{background:var(--accent-wash);color:var(--accent)}
+@media (prefers-reduced-motion:reduce){.icon-btn.ringing svg{animation:none}}
+
+.avatar{width:29px;height:29px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;
+  background:var(--accent-wash);color:var(--accent);border:1px solid var(--line);flex:0 0 auto}
+.avatar.sm{width:22px;height:22px;font-size:9px}
+
+.viewbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;
+  border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:55px;z-index:30}
+.viewbar h1{font-size:17px;display:flex;align-items:center;gap:9px}
+.viewbar h1 svg{width:18px;height:18px;color:var(--accent)}
+.stage{flex:1;padding:16px;min-width:0}
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r3);box-shadow:var(--shadow-1)}
+.card-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line-soft);
+  flex-wrap:wrap}
+.card-head h2{font-size:13.5px;font-weight:650}
+.card-body{padding:14px}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.g4,.g2{grid-template-columns:minmax(0,1fr)}}
+
+.btn{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:var(--r2);
+  border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:13px;font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s}
+.btn svg{width:15px;height:15px}
+.btn:hover{background:var(--panel-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{background:var(--accent-2);border-color:var(--accent-2)}
+.btn.ghost{background:none;border-color:transparent;color:var(--text-2)}
+.btn.ghost:hover{background:var(--panel-3);color:var(--text)}
+.btn.danger{color:var(--crit);border-color:color-mix(in srgb,var(--crit) 32%,transparent)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.chipbtn{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;
+  border:1px solid var(--line);background:var(--panel);color:var(--text-2);font-size:12.5px;
+  font-weight:550;cursor:pointer}
+.chipbtn.on{background:var(--accent-wash);border-color:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--accent)}
+
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:650;padding:2px 8px;
+  border-radius:999px;border:1px solid var(--line);background:var(--panel-3);color:var(--text-2);white-space:nowrap}
+.pill svg{width:11px;height:11px;stroke-width:2}
+.pill.k-active{background:var(--info-wash);color:var(--info);border-color:color-mix(in srgb,var(--info) 25%,transparent)}
+.pill.k-stuck{background:var(--warn-wash);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 25%,transparent)}
+.pill.k-closed{background:var(--ok-wash);color:var(--ok);border-color:color-mix(in srgb,var(--ok) 25%,transparent)}
+.pill.overdue{background:var(--crit-wash);color:var(--crit);border-color:color-mix(in srgb,var(--crit) 25%,transparent)}
+.pill.duesoon{background:var(--warn-wash);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 25%,transparent)}
+.pill.p-Critical{background:var(--crit-wash);color:var(--crit);border-color:color-mix(in srgb,var(--crit) 30%,transparent)}
+.pill.p-High{background:var(--warn-wash);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 30%,transparent)}
+.pill.p-Low{background:transparent;color:var(--text-3)}
+
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--r3);padding:12px 13px;
+  display:flex;flex-direction:column;gap:5px;cursor:pointer;text-align:start;
+  transition:border-color .12s,transform .08s}
+.tile:hover{border-color:var(--line-strong);transform:translateY(-1px)}
+.tile .tv{font-family:var(--font-mono);font-size:25px;font-weight:600;letter-spacing:-.035em;line-height:1;
+  font-variant-numeric:tabular-nums}
+.tile .tl{font-size:11.5px;color:var(--text-2);font-weight:550}
+.tile.crit{border-inline-start:3px solid var(--crit)} .tile.crit .tv{color:var(--crit)}
+.tile.warn{border-inline-start:3px solid var(--warn)} .tile.warn .tv{color:var(--warn)}
+.tile.ok{border-inline-start:3px solid var(--ok)} .tile.ok .tv{color:var(--ok)}
+.tile.acc{border-inline-start:3px solid var(--accent)} .tile.acc .tv{color:var(--accent)}
+.tile.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-wash)}
+
+/* The severity stripe encodes priority — it is information, not decoration. */
+.trow{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--panel);
+  border:1px solid var(--line);border-radius:var(--r2);margin-bottom:6px;cursor:pointer;position:relative;
+  transition:border-color .12s,box-shadow .12s}
+.trow:hover{border-color:var(--line-strong);box-shadow:var(--shadow-1)}
+.trow.done{opacity:.58}
+.trow.done .ttitle{text-decoration:line-through}
+.trow::before{content:"";position:absolute;inset-block:8px;inset-inline-start:0;width:3px;border-radius:3px;
+  background:transparent}
+.trow.p-Critical::before{background:var(--crit)}
+.trow.p-High::before{background:var(--warn)}
+.trow.p-Medium::before{background:var(--info);opacity:.55}
+.trow.p-Low::before{background:var(--line-strong)}
+.tcheck{width:19px;height:19px;border-radius:50%;border:1.6px solid var(--line-strong);background:var(--panel);
+  display:grid;place-items:center;cursor:pointer;flex:0 0 auto;margin-top:2px;padding:0}
+.tcheck svg{width:12px;height:12px;opacity:0;stroke-width:2.6}
+.tcheck:hover{border-color:var(--accent)}
+.tcheck.on{background:var(--ok);border-color:var(--ok)}
+.tcheck.on svg{opacity:1;color:#fff}
+.tmain{flex:1;min-width:0}
+.ttitle{font-size:13.5px;font-weight:550;line-height:1.35;overflow-wrap:anywhere}
+.tmeta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:5px;font-size:11.5px;color:var(--text-3)}
+.progress{height:4px;border-radius:999px;background:var(--line-soft);overflow:hidden;width:52px;flex:0 0 auto}
+.progress>i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.empty{text-align:center;padding:44px 20px;color:var(--text-3)}
+.empty svg{width:32px;height:32px;margin-bottom:10px;opacity:.5}
+.empty h3{font-size:14.5px;color:var(--text-2);margin-bottom:4px}
+
+.scrim{position:fixed;inset:0;background:rgba(6,20,25,.45);z-index:60}
+.drawer{position:fixed;inset-block:0;inset-inline-end:0;width:min(560px,100%);background:var(--bg);
+  z-index:70;box-shadow:var(--shadow-3);display:flex;flex-direction:column;border-inline-start:1px solid var(--line)}
+.drawer-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);
+  background:var(--panel)}
+.drawer-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.modal{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:20px;pointer-events:none}
+.modal-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r4);box-shadow:var(--shadow-3);
+  width:min(520px,100%);max-height:88dvh;overflow-y:auto;pointer-events:auto}
+.modal-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line-soft)}
+.modal-body{padding:16px}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--line-soft)}
+
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;padding:9px 11px;border:1px solid var(--field-line);
+  border-radius:var(--r2);background:var(--panel);outline:none;transition:border-color .12s,box-shadow .12s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-wash)}
+.field textarea{min-height:78px;resize:vertical}
+.hint{font-size:11.5px;color:var(--text-3);line-height:1.55}
+
+.notif-panel{position:fixed;top:54px;inset-inline-end:12px;width:min(400px,calc(100vw - 24px));
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r3);box-shadow:var(--shadow-3);
+  z-index:80;max-height:min(560px,80dvh);display:flex;flex-direction:column;overflow:hidden}
+.notif-head{display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid var(--line-soft)}
+.notif-list{overflow-y:auto;flex:1}
+.notif{display:flex;gap:10px;padding:11px 13px;border-bottom:1px solid var(--line-soft);cursor:pointer;
+  transition:background .12s}
+.notif:hover{background:var(--panel-2)}
+.notif.unread{background:var(--accent-wash)}
+.notif-kind{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:0 0 auto;
+  background:var(--panel-3);color:var(--text-2)}
+.notif-kind svg{width:15px;height:15px}
+.notif-kind.k-overdue,.notif-kind.k-escalation{background:var(--crit-wash);color:var(--crit)}
+.notif-kind.k-assign,.notif-kind.k-reassign{background:var(--accent-wash);color:var(--accent)}
+.notif-kind.k-reminder,.notif-kind.k-due{background:var(--warn-wash);color:var(--warn)}
+.notif-kind.k-comment,.notif-kind.k-mention{background:var(--info-wash);color:var(--info)}
+.notif-kind.k-complete{background:var(--ok-wash);color:var(--ok)}
+.notif-b{flex:1;min-width:0}
+.notif-t{font-size:12.5px;font-weight:650;margin-bottom:2px}
+.notif-x{font-size:12px;color:var(--text-2);line-height:1.5;overflow-wrap:anywhere}
+.notif-w{font-size:10.5px;color:var(--text-3);margin-top:4px;font-family:var(--font-mono)}
+
+.toasts{position:fixed;bottom:16px;inset-inline-end:16px;z-index:90;display:flex;flex-direction:column;gap:8px;
+  max-width:min(370px,calc(100vw - 32px))}
+.toast{background:var(--panel);border:1px solid var(--line);border-inline-start:3px solid var(--accent);
+  border-radius:var(--r2);box-shadow:var(--shadow-2);padding:11px 13px;display:flex;gap:10px;cursor:pointer;
+  animation:toast-in .22s cubic-bezier(.2,.9,.3,1)}
+.toast.crit{border-inline-start-color:var(--crit)}
+.toast.warn{border-inline-start-color:var(--warn)}
+@keyframes toast-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}}
+.toast-t{font-size:12.5px;font-weight:700;margin-bottom:2px}
+.toast-x{font-size:12px;color:var(--text-2);line-height:1.45}
+
+.switchrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+.switchrow:last-child{border-bottom:0}
+.switchrow .sl{flex:1;min-width:0}
+.switchrow .sl b{display:block;font-size:13px;font-weight:600}
+.switchrow .sl span{font-size:11.5px;color:var(--text-3);line-height:1.5}
+.switch{position:relative;width:40px;height:22px;flex:0 0 auto}
+.switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:2}
+.switch i{position:absolute;inset:0;background:var(--line-strong);border-radius:999px;transition:background .16s}
+.switch i::after{content:"";position:absolute;top:2px;inset-inline-start:2px;width:18px;height:18px;
+  border-radius:50%;background:#fff;transition:transform .16s;box-shadow:var(--shadow-1)}
+.switch input:checked + i{background:var(--accent)}
+body:not([dir="rtl"]) .switch input:checked + i::after{transform:translateX(18px)}
+body[dir="rtl"] .switch input:checked + i::after{transform:translateX(-18px)}
+.switch input:focus-visible + i{outline:2px solid var(--accent);outline-offset:2px}
+
+.note{border-inline-start:3px solid var(--info);background:var(--info-wash);border-radius:0 var(--r2) var(--r2) 0;
+  padding:11px 14px;font-size:12.5px;line-height:1.6;color:var(--text)}
+.note.warn{border-color:var(--warn);background:var(--warn-wash)}
+.note b{font-weight:700}
+
+.msg{border:1px solid var(--line);border-radius:var(--r2);margin-bottom:8px;background:var(--panel-2);overflow:hidden}
+.msg-head{display:flex;align-items:center;gap:9px;padding:9px 11px;cursor:pointer;flex-wrap:wrap}
+.msg-sub{flex:1;min-width:0;font-size:12.5px;font-weight:600;overflow-wrap:anywhere}
+.msg-body{padding:0 11px 11px;display:none}
+.msg.open .msg-body{display:block}
+.msg pre{margin:0 0 9px;padding:11px;background:var(--panel);border:1px solid var(--line-soft);
+  border-radius:var(--r1);font-family:var(--font-mono);font-size:11.5px;line-height:1.65;
+  white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow-y:auto;color:var(--text-2)}
+.state-composed{color:var(--warn);font-weight:650}
+.state-sent{color:var(--ok);font-weight:650}
+.state-suppressed{color:var(--text-3)}
+
+.comment{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+.comment:last-child{border-bottom:0}
+.comment .ch{font-size:12px;font-weight:650;margin-bottom:2px}
+.comment .cx{font-size:12.5px;color:var(--text-2);line-height:1.55;overflow-wrap:anywhere}
+.watcher{display:inline-flex;align-items:center;gap:6px;padding:3px 4px 3px 8px;border-radius:999px;
+  border:1px solid var(--line);background:var(--panel-2);font-size:12px}
+body[dir="rtl"] .watcher{padding:3px 8px 3px 4px}
+.watcher button{border:0;background:none;cursor:pointer;color:var(--text-3);display:grid;place-items:center;
+  padding:2px;border-radius:50%}
+.watcher button:hover{background:var(--crit-wash);color:var(--crit)}
+.watcher button svg{width:12px;height:12px}
+
+.menu-btn{display:none}
+@media(max-width:760px){
+  #clock,.btn-label{display:none}
+  .topbar{padding:10px 12px;gap:6px}
+  .stage{padding:12px}
+  .viewbar{padding:10px 12px}
+}
+@media(max-width:900px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  /* The closed drawer leaves the layout entirely. Parked off-canvas with a
+     transform it would sit to the right in a right-to-left document, which is
+     exactly where a horizontal scrollbar comes from. */
+  .rail{position:fixed;inset-block:0;inset-inline-start:0;width:var(--rail-w);z-index:65;display:none}
+  .rail.open{display:flex;animation:rail-in .2s cubic-bezier(.2,.9,.3,1)}
+  @keyframes rail-in{from{transform:translateX(-100%)}to{transform:none}}
+  body[dir="rtl"] .rail.open{animation-name:rail-in-rtl}
+  @keyframes rail-in-rtl{from{transform:translateX(100%)}to{transform:none}}
+  .menu-btn{display:grid}
+  .viewbar{top:55px}
+}
+@media(max-width:900px) and (prefers-reduced-motion:reduce){.rail.open{animation:none}}
+</style>
+
+<div id="root"></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ======================================================================
+     متابع · Mutabi — a follow-up console that runs entirely in this page.
+
+     Work is raised, assigned, followed, chased and escalated; everybody
+     attached to a task is told what happened. Notifications ring in the
+     browser. Email is composed for real and collected in the Outbox — a
+     page cannot open an SMTP connection, so it prepares the message and
+     hands it to you rather than pretending to deliver it.
+     ====================================================================== */
+
+  /* ------------------------------------------------------------- storage -- */
+  const KEY = 'mutabi.v1';
+  let memoryOnly = false;
+
+  function readStore() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+      memoryOnly = true;
+      return null;
+    }
+  }
+
+  function writeStore() {
+    if (memoryOnly) return;
+    try {
+      localStorage.setItem(KEY, JSON.stringify(DB));
+    } catch (err) {
+      /* A full or blocked store must not take the session down; the page
+         keeps working, it just stops surviving a reload. */
+      memoryOnly = true;
+      banner(t('storageLost'));
+    }
+  }
+
+  /* ---------------------------------------------------------- reference -- */
+  const STATUSES = [
+    { id: 'new', name: 'New', nameAr: 'جديدة', kind: 'open' },
+    { id: 'assigned', name: 'Assigned', nameAr: 'مُسندة', kind: 'open' },
+    { id: 'progress', name: 'In Progress', nameAr: 'قيد التنفيذ', kind: 'active' },
+    { id: 'blocked', name: 'Blocked', nameAr: 'معطَّلة', kind: 'stuck' },
+    { id: 'waiting', name: 'Waiting for Information', nameAr: 'بانتظار معلومات', kind: 'stuck' },
+    { id: 'review', name: 'Under Review', nameAr: 'قيد المراجعة', kind: 'active' },
+    { id: 'hold', name: 'On Hold', nameAr: 'معلّقة', kind: 'stuck' },
+    { id: 'done', name: 'Completed', nameAr: 'مكتملة', kind: 'closed' },
+    { id: 'cancelled', name: 'Cancelled', nameAr: 'ملغاة', kind: 'closed' }
+  ];
+  const STATUS_BY = new Map(STATUSES.map((s) => [s.id, s]));
+  const CLOSED = new Set(STATUSES.filter((s) => s.kind === 'closed').map((s) => s.id));
+  const PRIORITIES = ['Critical', 'High', 'Medium', 'Low'];
+  const PRIORITY_RANK = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+
+  const EVENTS = ['assign', 'due', 'overdue', 'mention', 'escalation', 'watch'];
+  const KIND_EVENT = {
+    assign: 'assign', reassign: 'assign',
+    reminder: 'due', due: 'due',
+    overdue: 'overdue',
+    comment: 'mention', mention: 'mention',
+    escalation: 'escalation',
+    watch: 'watch', status: 'watch', complete: 'watch', update: 'watch'
+  };
+  /* An escalation is news precisely because somebody stopped reading their
+     notifications, so it ignores every mute. */
+  const MANDATORY = new Set(['escalation']);
+
+  const DAY = 86400000;
+
+  /* ------------------------------------------------------------------ i18n */
+  const STRINGS = {
+    ar: {
+      app: 'متابع', appSub: 'منصّة المتابعة',
+      navWork: 'العمل', navSystem: 'النظام',
+      today: 'اليوم', myTasks: 'مهامي', following: 'أتابعها', allTasks: 'كل المهام',
+      notifications: 'الإشعارات', outbox: 'صندوق الصادر', settings: 'الإعدادات', people: 'الفريق',
+      search: 'بحث في المهام…', newTask: 'مهمة جديدة', language: 'اللغة', menu: 'القائمة',
+      open: 'مفتوحة', overdue: 'متأخرة', dueToday: 'مستحقة اليوم', completed: 'مكتملة',
+      due: 'الاستحقاق', time: 'الوقت', priority: 'الأولوية', status: 'الحالة',
+      assignee: 'المسؤول', progress: 'الإنجاز', description: 'الوصف',
+      title: 'العنوان', titleAr: 'العنوان بالعربية', unassigned: 'غير مسندة',
+      prio_Critical: 'حرجة', prio_High: 'عالية', prio_Medium: 'متوسطة', prio_Low: 'منخفضة',
+      watchers: 'المتابعون', addWatcher: 'إضافة متابع', follow: 'متابعة', unfollow: 'إلغاء المتابعة',
+      notFollowing: 'لا أحد يتابع هذه المهمة بعد',
+      comments: 'التعليقات', addComment: 'اكتب تعليقًا… استخدم @ للإشارة إلى شخص',
+      checklist: 'قائمة التحقق', addItem: 'إضافة بند', reminders: 'التذكيرات', addReminder: 'إضافة تذكير',
+      save: 'حفظ', cancel: 'إلغاء', close: 'إغلاق', add: 'إضافة', remove: 'حذف', send: 'إرسال',
+      delete: 'حذف المهمة', confirmDelete: 'حذف هذه المهمة نهائيًا؟',
+      markAllRead: 'تعليم الكل كمقروء', noNotifications: 'لا توجد إشعارات', viewAll: 'عرض الكل',
+      noTasks: 'لا توجد مهام هنا', noTasksSub: 'أنشئ مهمة أو غيّر المرشّح.',
+      inAppNotif: 'إشعارات داخل الصفحة', inAppNotifSub: 'تظهر في الجرس وتصلك أثناء عملك.',
+      soundOn: 'تنبيه صوتي (رنّة)', soundOnSub: 'تُشغَّل نغمة قصيرة عند وصول إشعار جديد.',
+      desktopOn: 'إشعارات سطح المكتب', desktopOnSub: 'تظهر خارج المتصفح — تحتاج إذن المتصفح.',
+      emailNotif: 'رسائل البريد', emailMode: 'متى تُجهَّز رسالة؟',
+      emailAll: 'لكل إشعار', emailCritical: 'للمهام الحرجة فقط', emailOff: 'لا تُجهَّز رسائل',
+      quietHours: 'ساعات الهدوء',
+      quietSub: 'تُكتم الرنّة خلال هذه الفترة، ويبقى الإشعار مسجَّلًا في الجرس. التصعيد لا يُكتم.',
+      from: 'من', to: 'إلى',
+      events: 'الأحداث', ev_assign: 'الإسناد', ev_due: 'الاستحقاق والتذكيرات', ev_overdue: 'التأخر',
+      ev_mention: 'التعليقات والإشارات', ev_escalation: 'التصعيد', ev_watch: 'تحديثات ما أتابعه',
+      testNotif: 'إشعار تجريبي', testNotifSub: 'يمر عبر المسار الكامل: الجرس والرنّة والرسالة.',
+      enableSound: 'تفعيل الصوت', enableSoundSub: 'اضغط مرة واحدة ليسمح المتصفح بتشغيل النغمة.',
+      soundReady: 'الصوت جاهز.', soundBlocked: 'الصوت بانتظار أول ضغطة.',
+      permissionDenied: 'رفض المتصفح إذن إشعارات سطح المكتب.',
+      me: 'أنا', myProfile: 'حسابي', name: 'الاسم', nameAr: 'الاسم بالعربية', email: 'البريد الإلكتروني',
+      role: 'الدور', manager: 'المدير المباشر', teamSub: 'الأشخاص الذين تُسند إليهم المهام ويصلهم البريد.',
+      addPerson: 'إضافة شخص', removePerson: 'إزالة',
+      outboxSub: 'الرسائل المُجهَّزة لكل إشعار. انسخها أو احفظها لإرسالها من بريدك.',
+      outboxNote: 'لا يمكن لصفحة أن تفتح اتصال SMTP، لذلك تُجهَّز الرسالة هنا كاملة بدل ادّعاء إرسالها. للإرسال التلقائي شغِّل نسخة الخادم.',
+      copy: 'نسخ', copied: 'نُسخت الرسالة.', copyFailed: 'تعذّر النسخ — حدّد النص وانسخه يدويًا.',
+      saveFile: 'حفظ ملف', markSent: 'تعليم كمُرسلة', markedSent: 'عُلِّمت كمُرسلة.',
+      recipient: 'المستلم', subject: 'الموضوع', state: 'الحالة',
+      st_composed: 'مُجهَّزة', st_sent: 'أُرسلت', st_suppressed: 'مكتومة',
+      noMessages: 'لا توجد رسائل بعد',
+      data: 'البيانات', dataSub: 'كل شيء محفوظ في هذا المتصفح فقط. احتفظ بنسخة قبل تغيير الجهاز.',
+      backup: 'حفظ نسخة احتياطية', restore: 'استعادة من نسخة', restoreDone: 'استُعيدت البيانات.',
+      restoreFailed: 'الملف غير صالح.', reset: 'إعادة ضبط كل شيء', confirmReset: 'حذف كل البيانات والبدء من جديد؟',
+      saved: 'حُفظ.', savedFile: 'حُفظ الملف.', saveDeclined: 'أُلغي الحفظ.', saveUnavailable: 'الحفظ غير متاح هنا.',
+      storageLost: 'تعذّر الحفظ في هذا المتصفح — ستبقى التغييرات حتى إغلاق الصفحة فقط.',
+      localOnly: 'بياناتك محفوظة في هذا المتصفح فقط.',
+      k_assign: 'إسناد', k_reassign: 'إعادة إسناد', k_reminder: 'تذكير', k_due: 'تغيير الاستحقاق',
+      k_overdue: 'متأخرة', k_escalation: 'تصعيد', k_mention: 'إشارة', k_comment: 'تعليق',
+      k_complete: 'اكتملت', k_status: 'تغيّر الحالة', k_update: 'تحديث', k_watch: 'متابعة',
+      m_assigned: 'أسند إليك {actor} المهمة «{task}».',
+      m_reassigned: 'أُعيد إسناد المهمة «{task}» إلى شخص آخر.',
+      m_status: 'نقل {actor} المهمة «{task}» إلى «{status}».',
+      m_complete: 'أكمل {actor} المهمة «{task}».',
+      m_due: 'أصبح تاريخ استحقاق المهمة «{task}» {date}.',
+      m_comment: 'علّق {actor} على المهمة «{task}»: {text}',
+      m_mention: 'أشار إليك {actor} في المهمة «{task}»: {text}',
+      m_watch: 'أضافك {actor} كمتابع للمهمة «{task}».',
+      m_reminder: 'تذكير: المهمة «{task}» مستحقة {date}.',
+      m_overdue: 'تجاوزت المهمة «{task}» تاريخ استحقاقها ({date}).',
+      m_escalation: 'المهمة «{task}» متأخرة {days} يومًا وقد صُعِّدت إليك.',
+      m_test: 'هذا إشعار تجريبي. إذا سمعت النغمة ورأيت البطاقة، فالإشعارات تعمل.',
+      mailFooter: 'وصلتك هذه الرسالة لأنك من متابعي هذه المهمة في متابع.',
+      mailPriority: 'الأولوية', mailDue: 'الاستحقاق', mailStatus: 'الحالة', mailNoDue: 'بدون تاريخ استحقاق',
+      justNow: 'الآن'
+    },
+    en: {
+      app: 'Mutabi', appSub: 'Follow-up console',
+      navWork: 'Work', navSystem: 'System',
+      today: 'Today', myTasks: 'My tasks', following: 'Following', allTasks: 'All tasks',
+      notifications: 'Notifications', outbox: 'Outbox', settings: 'Settings', people: 'Team',
+      search: 'Search tasks…', newTask: 'New task', language: 'Language', menu: 'Menu',
+      open: 'Open', overdue: 'Overdue', dueToday: 'Due today', completed: 'Completed',
+      due: 'Due', time: 'Time', priority: 'Priority', status: 'Status',
+      assignee: 'Assignee', progress: 'Progress', description: 'Description',
+      title: 'Title', titleAr: 'Arabic title', unassigned: 'Unassigned',
+      prio_Critical: 'Critical', prio_High: 'High', prio_Medium: 'Medium', prio_Low: 'Low',
+      watchers: 'Followers', addWatcher: 'Add follower', follow: 'Follow', unfollow: 'Unfollow',
+      notFollowing: 'Nobody follows this task yet',
+      comments: 'Comments', addComment: 'Write a comment… use @ to mention someone',
+      checklist: 'Checklist', addItem: 'Add item', reminders: 'Reminders', addReminder: 'Add reminder',
+      save: 'Save', cancel: 'Cancel', close: 'Close', add: 'Add', remove: 'Remove', send: 'Send',
+      delete: 'Delete task', confirmDelete: 'Delete this task permanently?',
+      markAllRead: 'Mark all read', noNotifications: 'Nothing to read', viewAll: 'View all',
+      noTasks: 'No tasks here', noTasksSub: 'Create one, or change the filter.',
+      inAppNotif: 'In-page notifications', inAppNotifSub: 'They land in the bell and arrive while you work.',
+      soundOn: 'Audible ring', soundOnSub: 'A short chime plays when a notification arrives.',
+      desktopOn: 'Desktop notifications', desktopOnSub: 'Shown outside the browser — needs permission.',
+      emailNotif: 'Email messages', emailMode: 'When should a message be prepared?',
+      emailAll: 'For every notification', emailCritical: 'Critical tasks only', emailOff: 'Never',
+      quietHours: 'Quiet hours',
+      quietSub: 'The ring is muted during this window; the notification still lands in the bell. Escalations are never muted.',
+      from: 'From', to: 'To',
+      events: 'Events', ev_assign: 'Assignment', ev_due: 'Due dates and reminders', ev_overdue: 'Overdue',
+      ev_mention: 'Comments and mentions', ev_escalation: 'Escalations', ev_watch: 'Updates I follow',
+      testNotif: 'Test notification', testNotifSub: 'Goes through the whole path: bell, ring and message.',
+      enableSound: 'Enable sound', enableSoundSub: 'Click once so the browser will let the chime play.',
+      soundReady: 'Sound is ready.', soundBlocked: 'Sound waits for your first click.',
+      permissionDenied: 'The browser refused desktop notification permission.',
+      me: 'Me', myProfile: 'My account', name: 'Name', nameAr: 'Arabic name', email: 'Email',
+      role: 'Role', manager: 'Line manager', teamSub: 'The people you assign work to and address messages to.',
+      addPerson: 'Add person', removePerson: 'Remove',
+      outboxSub: 'A prepared message for every notification. Copy it or save it, then send from your own mail.',
+      outboxNote: 'A page cannot open an SMTP connection, so the message is prepared here in full rather than pretending to be delivered. Run the server build for automatic sending.',
+      copy: 'Copy', copied: 'Message copied.', copyFailed: 'Copy failed — select the text and copy it manually.',
+      saveFile: 'Save file', markSent: 'Mark as sent', markedSent: 'Marked as sent.',
+      recipient: 'Recipient', subject: 'Subject', state: 'State',
+      st_composed: 'Prepared', st_sent: 'Sent', st_suppressed: 'Suppressed',
+      noMessages: 'No messages yet',
+      data: 'Data', dataSub: 'Everything is stored in this browser only. Keep a copy before you switch device.',
+      backup: 'Save a backup', restore: 'Restore from a backup', restoreDone: 'Data restored.',
+      restoreFailed: 'That file could not be read.', reset: 'Reset everything', confirmReset: 'Delete all data and start again?',
+      saved: 'Saved.', savedFile: 'File saved.', saveDeclined: 'Save cancelled.', saveUnavailable: 'Saving is not available here.',
+      storageLost: 'This browser refused to store data — changes will last until you close the page.',
+      localOnly: 'Your data is stored in this browser only.',
+      k_assign: 'Assigned', k_reassign: 'Reassigned', k_reminder: 'Reminder', k_due: 'Due date changed',
+      k_overdue: 'Overdue', k_escalation: 'Escalation', k_mention: 'Mentioned', k_comment: 'Comment',
+      k_complete: 'Completed', k_status: 'Status changed', k_update: 'Updated', k_watch: 'Following',
+      m_assigned: '{actor} assigned you "{task}".',
+      m_reassigned: '"{task}" was reassigned away from you.',
+      m_status: '{actor} moved "{task}" to {status}.',
+      m_complete: '{actor} completed "{task}".',
+      m_due: 'The due date of "{task}" is now {date}.',
+      m_comment: '{actor} commented on "{task}": {text}',
+      m_mention: '{actor} mentioned you on "{task}": {text}',
+      m_watch: '{actor} added you as a follower of "{task}".',
+      m_reminder: 'Reminder: "{task}" is due {date}.',
+      m_overdue: '"{task}" passed its due date ({date}).',
+      m_escalation: '"{task}" is {days} day(s) overdue and has been escalated to you.',
+      m_test: 'This is a test notification. If you heard the chime and saw the card, notifications are working.',
+      mailFooter: 'You are receiving this because you follow this task in Mutabi.',
+      mailPriority: 'Priority', mailDue: 'Due', mailStatus: 'Status', mailNoDue: 'No due date',
+      justNow: 'just now'
+    }
+  };
+
+  let LANG = 'ar';
+  function t(key) {
+    const table = STRINGS[LANG] || STRINGS.en;
+    return table[key] !== undefined ? table[key] : (STRINGS.en[key] !== undefined ? STRINGS.en[key] : key);
+  }
+  function fmt(key, values) {
+    return String(t(key)).replace(/\{(\w+)\}/g, (m, name) => (values && values[name] !== undefined ? String(values[name]) : m));
+  }
+  const isAr = () => LANG === 'ar';
+
+  /* ------------------------------------------------------------------- DOM */
+  function el(tag, attrs, children) {
+    const node = document.createElement(tag);
+    const a = attrs || {};
+    for (const key of Object.keys(a)) {
+      const value = a[key];
+      if (value === null || value === undefined || value === false) continue;
+      if (key === 'class') node.className = value;
+      else if (key === 'style' && typeof value === 'object') Object.assign(node.style, value);
+      else if (key.slice(0, 2) === 'on' && typeof value === 'function') node.addEventListener(key.slice(2).toLowerCase(), value);
+      else if (value === true) node.setAttribute(key, '');
+      else node.setAttribute(key, String(value));
+    }
+    const list = Array.isArray(children) ? children : (children === undefined ? [] : [children]);
+    for (const child of list) {
+      if (child === null || child === undefined || child === false) continue;
+      /* Text is always set as text, never parsed — a task title or a comment
+         can never become markup. */
+      node.appendChild(typeof child === 'object' ? child : document.createTextNode(String(child)));
+    }
+    return node;
+  }
+
+  const ICONS = {
+    focus: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/>',
+    mine: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    eye: '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>',
+    list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    bell: '<path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+    mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
+    users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    close: '<path d="M18 6 6 18M6 6l12 12"/>',
+    check: '<path d="m4 12 5 5L20 6"/>',
+    menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    chat: '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9 9 0 0 1-4-1L3 20l1-3.8A8.4 8.4 0 0 1 3 11.5 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/>',
+    alert: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+    up: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+    volume: '<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/>',
+    copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+    down: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/>',
+    trash: '<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
+  };
+  function ic(name) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = ICONS[name] || ICONS.list;
+    return svg;
+  }
+  function mount(node, children) {
+    while (node.firstChild) node.removeChild(node.firstChild);
+    const list = Array.isArray(children) ? children : [children];
+    for (const c of list) if (c) node.appendChild(c);
+    return node;
+  }
+  function initials(name) {
+    const parts = String(name || '?').trim().split(/\s+/).slice(0, 2);
+    return parts.map((p) => p.charAt(0)).join('').toUpperCase() || '?';
+  }
+
+  /* ------------------------------------------------------------------ time */
+  function todayIso(d) {
+    const dt = d || new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return dt.getFullYear() + '-' + p(dt.getMonth() + 1) + '-' + p(dt.getDate());
+  }
+  function shiftDays(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return todayIso(d);
+  }
+  function dueInstant(date, time) {
+    if (!date) return null;
+    const parts = String(date).split('-').map(Number);
+    if (parts.length !== 3 || !parts[0]) return null;
+    if (time && /^([01]?\d|2[0-3]):[0-5]\d$/.test(time)) {
+      const hm = time.split(':').map(Number);
+      return new Date(parts[0], parts[1] - 1, parts[2], hm[0], hm[1], 0, 0).getTime();
+    }
+    return new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999).getTime();
+  }
+  function isOverdue(task, at) {
+    if (!task.due || CLOSED.has(task.status)) return false;
+    const inst = dueInstant(task.due, task.dueTime);
+    return inst !== null && inst < (at || Date.now());
+  }
+  function toMinutes(hhmm) {
+    const parts = String(hhmm || '0:00').split(':').map(Number);
+    return (parts[0] || 0) * 60 + (parts[1] || 0);
+  }
+  /* Quiet hours usually wrap past midnight, so from > to has to read as
+     "either side of the boundary". */
+  function inQuietHours(quiet, at) {
+    if (!quiet || !quiet.enabled) return false;
+    const now = at || new Date();
+    const mins = now.getHours() * 60 + now.getMinutes();
+    const from = toMinutes(quiet.from);
+    const to = toMinutes(quiet.to);
+    if (from === to) return false;
+    return from > to ? (mins >= from || mins < to) : (mins >= from && mins < to);
+  }
+  function when(ms) {
+    if (!ms) return '';
+    const mins = Math.round((Date.now() - Number(ms)) / 60000);
+    if (mins < 1) return t('justNow');
+    if (mins < 60) return isAr() ? 'قبل ' + mins + ' د' : mins + 'm ago';
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return isAr() ? 'قبل ' + hrs + ' س' : hrs + 'h ago';
+    const days = Math.round(hrs / 24);
+    if (days < 30) return isAr() ? 'قبل ' + days + ' ي' : days + 'd ago';
+    return new Date(Number(ms)).toISOString().slice(0, 10);
+  }
+  function clockText() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  let seq = 0;
+  function uid(prefix) {
+    seq += 1;
+    return prefix + '_' + Date.now().toString(36) + seq.toString(36) + Math.floor(Math.random() * 1296).toString(36);
+  }
+  function nextTaskId() {
+    let max = 1000;
+    for (const task of DB.tasks) {
+      const n = Number(String(task.id).replace(/^T-/, ''));
+      if (Number.isFinite(n) && n > max) max = n;
+    }
+    return 'T-' + (max + 1);
+  }
+
+  /* ------------------------------------------------------------------ seed */
+  function defaultPrefs() {
+    const events = {};
+    for (const e of EVENTS) events[e] = true;
+    return {
+      inApp: { enabled: true, sound: true, desktop: false, events: Object.assign({}, events) },
+      email: { mode: 'all', events: Object.assign({}, events) },
+      quiet: { enabled: true, from: '21:00', to: '07:00' }
+    };
+  }
+
+  function seedData() {
+    const now = Date.now();
+    const people = [
+      { id: 'p1', name: 'You', nameAr: 'أنا', email: 'you@example.com', role: 'admin', manager: null },
+      { id: 'p2', name: 'Layla Mansour', nameAr: 'ليلى منصور', email: 'layla@example.com', role: 'manager', manager: 'p1' },
+      { id: 'p3', name: 'Sara Youssef', nameAr: 'سارة يوسف', email: 'sara@example.com', role: 'member', manager: 'p2' },
+      { id: 'p4', name: 'Omar Fadel', nameAr: 'عمر فاضل', email: 'omar@example.com', role: 'member', manager: 'p2' },
+      { id: 'p5', name: 'Huda Nasser', nameAr: 'هدى ناصر', email: 'huda@example.com', role: 'member', manager: 'p1' }
+    ];
+    const mk = (o) => Object.assign({
+      desc: '', progress: 0, watchers: [], dueTime: '', reminderLead: 1, escalationDays: 3,
+      createdAt: now - 6 * DAY, updatedAt: now - 2 * DAY, statusSince: now - 2 * DAY,
+      completedAt: null, overdueFlagged: false, escalatedAt: null, escalatedTo: null
+    }, o);
+    const tasks = [
+      mk({
+        id: 'T-1001', title: 'Submit the weekly progress report', titleAr: 'تسليم تقرير التقدم الأسبوعي',
+        desc: 'Consolidate the field readings and send them before the weekly review.',
+        status: 'progress', priority: 'High', due: shiftDays(-3), assignee: 'p3', owner: 'p2',
+        progress: 60, watchers: ['p1', 'p2', 'p3']
+      }),
+      mk({
+        id: 'T-1002', title: 'Close out safety observation SO-241', titleAr: 'إغلاق ملاحظة السلامة SO-241',
+        desc: 'The corrective action is waiting on closure evidence from the contractor.',
+        status: 'blocked', priority: 'Critical', due: shiftDays(-1), assignee: 'p5', owner: 'p1',
+        progress: 30, watchers: ['p1', 'p5']
+      }),
+      mk({
+        id: 'T-1003', title: 'Single sign-on cutover', titleAr: 'تحويل الدخول الموحّد',
+        desc: 'Agree the cutover window with the identity provider.',
+        status: 'assigned', priority: 'High', due: todayIso(), dueTime: '16:00', assignee: 'p4', owner: 'p2',
+        progress: 15, watchers: ['p1', 'p4']
+      }),
+      mk({
+        id: 'T-1004', title: 'Update the document register', titleAr: 'تحديث سجل الوثائق',
+        status: 'new', priority: 'Medium', due: shiftDays(2), assignee: 'p5', owner: 'p1',
+        watchers: ['p5']
+      }),
+      mk({
+        id: 'T-1005', title: 'Draft the follow-up procedure', titleAr: 'إعداد إجراء المتابعة',
+        desc: 'Write down how follow-up items are raised, tracked and escalated.',
+        status: 'review', priority: 'High', due: shiftDays(4), assignee: 'p5', owner: 'p1',
+        progress: 70, watchers: ['p1', 'p5']
+      }),
+      mk({
+        id: 'T-1006', title: 'Publish the quarterly dashboard', titleAr: 'نشر لوحة المتابعة الفصلية',
+        status: 'done', priority: 'Low', due: shiftDays(-8), assignee: 'p4', owner: 'p2',
+        progress: 100, completedAt: now - 5 * DAY, watchers: ['p1', 'p4']
+      })
+    ];
+    return {
+      version: 1,
+      me: 'p1',
+      lang: 'ar',
+      people: people,
+      tasks: tasks,
+      comments: [
+        { id: 'c1', task: 'T-1002', user: 'p2', text: 'Verification is waiting on the contractor evidence.', at: now - 2 * DAY }
+      ],
+      checklist: [
+        { id: 'k1', task: 'T-1005', text: 'Draft the scope section', done: true },
+        { id: 'k2', task: 'T-1005', text: 'Add the escalation matrix', done: true },
+        { id: 'k3', task: 'T-1005', text: 'Circulate for review', done: false }
+      ],
+      reminders: [],
+      notifications: [],
+      outbox: [],
+      prefs: defaultPrefs()
+    };
+  }
+
+  let DB = readStore();
+  if (!DB || !DB.tasks) DB = seedData();
+  /* An older or partial blob must not leave a field undefined. */
+  DB.prefs = Object.assign(defaultPrefs(), DB.prefs || {});
+  DB.prefs.inApp = Object.assign(defaultPrefs().inApp, DB.prefs.inApp || {});
+  DB.prefs.email = Object.assign(defaultPrefs().email, DB.prefs.email || {});
+  DB.prefs.quiet = Object.assign(defaultPrefs().quiet, DB.prefs.quiet || {});
+  for (const key of ['tasks', 'people', 'comments', 'checklist', 'reminders', 'notifications', 'outbox']) {
+    if (!Array.isArray(DB[key])) DB[key] = [];
+  }
+  LANG = DB.lang === 'en' ? 'en' : 'ar';
+
+  const person = (id) => DB.people.find((p) => p.id === id) || null;
+  const task = (id) => DB.tasks.find((x) => x.id === id) || null;
+  const me = () => person(DB.me) || DB.people[0] || null;
+  function personName(id) {
+    const p = person(id);
+    if (!p) return t('unassigned');
+    return isAr() ? (p.nameAr || p.name) : p.name;
+  }
+  function taskTitle(x) {
+    return isAr() ? (x.titleAr || x.title) : x.title;
+  }
+  function statusLabel(id) {
+    const s = STATUS_BY.get(id);
+    return s ? (isAr() ? s.nameAr : s.name) : id;
+  }
+
+  /* ------------------------------------------------------------------ ring */
+  const Ring = (function () {
+    let ctx = null;
+    let listeners = [];
+
+    function context() {
+      if (ctx) return ctx;
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return null;
+      try { ctx = new Ctor(); } catch (err) { ctx = null; }
+      return ctx;
+    }
+    function state() {
+      return { supported: !!(window.AudioContext || window.webkitAudioContext), unlocked: !!ctx && ctx.state === 'running' };
+    }
+    function publish() {
+      for (const fn of listeners) { try { fn(state()); } catch (err) { /* a bad listener is not our problem */ } }
+    }
+    function unlock() {
+      const c = context();
+      if (!c) { publish(); return Promise.resolve(false); }
+      const done = () => { publish(); return c.state === 'running'; };
+      if (c.state === 'suspended') {
+        try { return Promise.resolve(c.resume()).then(done, done); } catch (err) { return Promise.resolve(done()); }
+      }
+      return Promise.resolve(done());
+    }
+    function tone(c, freq, start, duration, gain) {
+      const osc = c.createOscillator();
+      const amp = c.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, start);
+      /* A quick attack and an exponential tail: a bell, not a beep. */
+      amp.gain.setValueAtTime(0.0001, start);
+      amp.gain.exponentialRampToValueAtTime(gain, start + 0.012);
+      amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(amp);
+      amp.connect(c.destination);
+      osc.start(start);
+      osc.stop(start + duration + 0.02);
+    }
+    const PATTERNS = {
+      /* Two rising notes for ordinary news, three insistent ones when work is
+         already late, one low note for routine chatter. */
+      normal: [[880.0, 0, 0.28, 0.14], [1318.5, 0.11, 0.42, 0.11]],
+      urgent: [[987.8, 0, 0.2, 0.16], [987.8, 0.17, 0.2, 0.16], [1318.5, 0.34, 0.5, 0.14]],
+      soft: [[659.3, 0, 0.32, 0.1]]
+    };
+    const URGENT = { overdue: 1, escalation: 1 };
+    const SOFT = { comment: 1, status: 1, update: 1, watch: 1, complete: 1 };
+    function play(kind) {
+      const c = context();
+      if (!c) return false;
+      if (c.state !== 'running') { unlock(); return false; }
+      const name = URGENT[kind] ? 'urgent' : (SOFT[kind] ? 'soft' : 'normal');
+      const pattern = PATTERNS[name];
+      const start = c.currentTime + 0.01;
+      try {
+        for (const note of pattern) tone(c, note[0], start + note[1], note[2], note[3]);
+        return true;
+      } catch (err) { return false; }
+    }
+    return {
+      play: play,
+      unlock: unlock,
+      state: state,
+      onChange: function (fn) { listeners.push(fn); fn(state()); }
+    };
+  }());
+
+  /* Any real click counts as the unlocking gesture, so by the time the first
+     notification lands the chime is usually already allowed. */
+  for (const evt of ['pointerdown', 'keydown', 'touchstart']) {
+    window.addEventListener(evt, function () { Ring.unlock(); }, { passive: true });
+  }
+
+  function desktopPermission() {
+    try { return typeof Notification === 'undefined' ? 'unsupported' : Notification.permission; }
+    catch (err) { return 'unsupported'; }
+  }
+  function requestDesktop() {
+    if (typeof Notification === 'undefined' || typeof Notification.requestPermission !== 'function') {
+      return Promise.resolve('unsupported');
+    }
+    try {
+      const result = Notification.requestPermission();
+      return result && typeof result.then === 'function' ? result : Promise.resolve(result);
+    } catch (err) { return Promise.resolve('unsupported'); }
+  }
+  function showDesktop(title, body) {
+    if (desktopPermission() !== 'granted') return false;
+    try { new Notification(title, { body: String(body || '').slice(0, 180), tag: 'mutabi' }); return true; }
+    catch (err) { return false; }
+  }
+
+  /* ------------------------------------------------------------ the mail -- */
+  function composeMessage(target, kind, taskId, text) {
+    const p = person(target);
+    const x = taskId ? task(taskId) : null;
+    const readerAr = isAr();
+    const lines = [];
+    lines.push((readerAr ? 'مرحبًا ' : 'Hello ') + (readerAr ? (p.nameAr || p.name) : p.name) + ',');
+    lines.push('');
+    lines.push(text);
+    if (x) {
+      lines.push('');
+      lines.push(x.id + ' — ' + taskTitle(x));
+      lines.push(t('mailPriority') + ': ' + t('prio_' + x.priority));
+      lines.push(t('mailDue') + ': ' + (x.due ? x.due + (x.dueTime ? ' ' + x.dueTime : '') : t('mailNoDue')));
+      lines.push(t('mailStatus') + ': ' + statusLabel(x.status));
+    }
+    lines.push('');
+    lines.push('—');
+    lines.push(t('mailFooter'));
+    const subject = (x ? '[' + x.id + '] ' : '') + t('k_' + kind) + (x ? ' — ' + taskTitle(x) : '');
+    return { subject: subject, body: lines.join('\n') };
+  }
+
+  /* ------------------------------------------------------- THE choke point */
+  /* Everything that wants to tell somebody something calls notify(). Nothing
+     else writes a notification and nothing else composes a message, which is
+     what makes a preference honest: there is exactly one place it is read. */
+  function notify(opts) {
+    const target = opts.user;
+    const kind = opts.kind;
+    if (!target || !kind) return null;
+    const p = person(target);
+    if (!p) return null;
+    /* Nobody needs to be told what they just did themselves. */
+    if (opts.actor && opts.actor === target && !MANDATORY.has(kind) && !opts.force) return null;
+
+    const mandatory = MANDATORY.has(kind) || !!opts.force;
+    const event = KIND_EVENT[kind] || 'watch';
+    const mine = target === DB.me;
+    const prefs = DB.prefs;
+    const quiet = !mandatory && inQuietHours(prefs.quiet);
+    const x = opts.task ? task(opts.task) : null;
+
+    /* Preferences belong to the person using this page; other people's
+       notifications are recorded so the follower model stays visible, but
+       they are never rung here. */
+    const inAppAllowed = !mine || mandatory || (prefs.inApp.enabled && prefs.inApp.events[event] !== false);
+    let record = null;
+    if (inAppAllowed) {
+      record = {
+        id: uid('n'), user: target, kind: kind, task: opts.task || null,
+        actor: opts.actor || null, text: opts.text, at: Date.now(), read: false
+      };
+      DB.notifications.unshift(record);
+      if (DB.notifications.length > 400) DB.notifications.length = 400;
+    }
+
+    let emailAllowed = mandatory || (prefs.email.mode !== 'off' && prefs.email.events[event] !== false);
+    if (!mandatory && prefs.email.mode === 'critical' && (!x || x.priority !== 'Critical')) emailAllowed = false;
+    if (emailAllowed) {
+      const composed = composeMessage(target, kind, opts.task, opts.text);
+      DB.outbox.unshift({
+        id: uid('m'), to: target, toEmail: p.email || '', kind: kind, task: opts.task || null,
+        subject: composed.subject, body: composed.body, at: Date.now(), state: 'composed'
+      });
+      if (DB.outbox.length > 200) DB.outbox.length = 200;
+    } else {
+      DB.outbox.unshift({
+        id: uid('m'), to: target, toEmail: p.email || '', kind: kind, task: opts.task || null,
+        subject: t('k_' + kind), body: '', at: Date.now(), state: 'suppressed',
+        reason: prefs.email.mode === 'off' ? 'email off' : 'event muted or not critical'
+      });
+      if (DB.outbox.length > 200) DB.outbox.length = 200;
+    }
+
+    if (record && mine) {
+      const sound = mandatory || (prefs.inApp.sound && !quiet);
+      if (sound) Ring.play(kind);
+      shakeBell();
+      toast(record, sound);
+      if (mandatory || (prefs.inApp.desktop && !quiet)) {
+        showDesktop(t('app') + ' · ' + t('k_' + kind), opts.text);
+      }
+    }
+    return record;
+  }
+
+  /* Everyone attached to a task: assignee, owner, and المتابعون — the
+     followers. Following is what lets somebody track work they are not doing
+     without being made responsible for it. */
+  function audience(taskId, exclude) {
+    const x = task(taskId);
+    if (!x) return [];
+    const set = [];
+    const push = (id) => { if (id && set.indexOf(id) === -1 && person(id)) set.push(id); };
+    push(x.assignee);
+    push(x.owner);
+    push(x.escalatedTo);
+    for (const w of x.watchers || []) push(w);
+    return set.filter((id) => !exclude || exclude.indexOf(id) === -1);
+  }
+
+  function notifyAudience(taskId, kind, text, actor) {
+    for (const target of audience(taskId, actor ? [actor] : [])) {
+      notify({ user: target, kind: kind, task: taskId, actor: actor, text: text });
+    }
+  }
+
+  const unreadCount = () => DB.notifications.filter((n) => n.user === DB.me && !n.read).length;
+
+  /* --------------------------------------------------------- the engine -- */
+  /* Reminders, overdue detection and escalation. Every pass is idempotent —
+     a flag is set before the notification is raised — so reopening the page
+     cannot announce the same thing twice. */
+  function syncAutoReminder(taskId) {
+    const x = task(taskId);
+    if (!x) return;
+    DB.reminders = DB.reminders.filter((r) => !(r.task === taskId && r.auto && !r.fired));
+    if (!x.due || CLOSED.has(x.status)) return;
+    const inst = dueInstant(x.due, x.dueTime);
+    if (inst === null) return;
+    const lead = Number.isFinite(x.reminderLead) ? x.reminderLead : 1;
+    const fireAt = inst - lead * DAY;
+    if (fireAt <= Date.now()) return;
+    DB.reminders.push({ id: uid('r'), task: taskId, user: null, at: fireAt, fired: false, auto: true, note: '' });
+  }
+
+  function runEngine() {
+    const now = Date.now();
+    let changed = false;
+
+    for (const rem of DB.reminders) {
+      if (rem.fired || rem.at > now) continue;
+      rem.fired = true;
+      changed = true;
+      const x = task(rem.task);
+      if (!x || CLOSED.has(x.status)) continue;
+      const text = rem.note || fmt('m_reminder', { task: taskTitle(x), date: x.due || '' });
+      const targets = rem.user ? [rem.user] : audience(rem.task);
+      for (const target of targets) notify({ user: target, kind: 'reminder', task: rem.task, text: text });
+    }
+
+    for (const x of DB.tasks) {
+      if (x.overdueFlagged || !x.due || CLOSED.has(x.status)) continue;
+      const inst = dueInstant(x.due, x.dueTime);
+      if (inst === null || inst >= now) continue;
+      x.overdueFlagged = true;
+      changed = true;
+      notifyAudience(x.id, 'overdue', fmt('m_overdue', { task: taskTitle(x), date: x.due }));
+    }
+
+    for (const x of DB.tasks) {
+      if (x.escalatedAt || !x.due || CLOSED.has(x.status)) continue;
+      const inst = dueInstant(x.due, x.dueTime);
+      if (inst === null) continue;
+      const days = Number.isFinite(x.escalationDays) ? x.escalationDays : 3;
+      if (days <= 0 || now - inst < days * DAY) continue;
+      /* Escalate to the assignee's manager, then the owner's, so it never
+         lands nowhere. */
+      const assignee = person(x.assignee);
+      const owner = person(x.owner);
+      const target = (assignee && assignee.manager) || (owner && owner.manager) || null;
+      if (!target || !person(target)) continue;
+      x.escalatedAt = now;
+      x.escalatedTo = target;
+      changed = true;
+      notify({
+        user: target, kind: 'escalation', task: x.id,
+        text: fmt('m_escalation', { task: taskTitle(x), days: Math.floor((now - inst) / DAY) })
+      });
+    }
+
+    if (changed) { writeStore(); rerender(); }
+    return changed;
+  }
+
+  /* --------------------------------------------------------------- toasts */
+  const toastHost = document.getElementById('toasts');
+  function toast(record, sound) {
+    const severity = (record.kind === 'overdue' || record.kind === 'escalation') ? 'crit'
+      : ((record.kind === 'reminder' || record.kind === 'due') ? 'warn' : '');
+    const node = el('div', {
+      class: 'toast ' + severity,
+      onclick: function () { node.remove(); if (record.task) openTask(record.task); }
+    }, [
+      el('div', { class: 'notif-kind k-' + record.kind }, [ic(kindIcon(record.kind))]),
+      el('div', { style: { flex: '1', minWidth: '0' } }, [
+        el('div', { class: 'toast-t' }, [t('k_' + record.kind)]),
+        el('div', { class: 'toast-x' }, [record.text])
+      ])
+    ]);
+    toastHost.appendChild(node);
+    setTimeout(function () { node.remove(); }, record.kind === 'escalation' ? 14000 : 7000);
+    while (toastHost.childElementCount > 4) toastHost.firstElementChild.remove();
+    return sound;
+  }
+  function banner(message) {
+    const node = el('div', { class: 'toast warn', onclick: function () { node.remove(); } }, [
+      el('div', { class: 'notif-kind k-overdue' }, [ic('alert')]),
+      el('div', { style: { flex: '1' } }, [el('div', { class: 'toast-x' }, [message])])
+    ]);
+    toastHost.appendChild(node);
+    setTimeout(function () { node.remove(); }, 9000);
+  }
+  function shakeBell() {
+    const bell = document.getElementById('bellBtn');
+    if (!bell) return;
+    bell.classList.remove('ringing');
+    void bell.offsetWidth;
+    bell.classList.add('ringing');
+    setTimeout(function () { bell.classList.remove('ringing'); }, 1000);
+  }
+  function kindIcon(kind) {
+    const map = {
+      assign: 'mine', reassign: 'mine', reminder: 'clock', due: 'clock', overdue: 'alert',
+      escalation: 'up', mention: 'chat', comment: 'chat', complete: 'check',
+      status: 'list', update: 'list', watch: 'eye'
+    };
+    return map[kind] || 'bell';
+  }
+
+  /* ----------------------------------------------------------------- view */
+  const root = document.getElementById('root');
+  const UI = { view: 'today', query: '', filter: '', drawer: null, panel: false };
+
+  function setLang(lang) {
+    LANG = lang === 'en' ? 'en' : 'ar';
+    DB.lang = LANG;
+    document.body.setAttribute('dir', isAr() ? 'rtl' : 'ltr');
+    document.documentElement.setAttribute('lang', LANG);
+    writeStore();
+  }
+
+  function visibleTasks() {
+    const today = todayIso();
+    let list = DB.tasks.slice();
+    if (UI.query) {
+      const q = UI.query.toLowerCase();
+      list = list.filter((x) => (x.id + ' ' + x.title + ' ' + (x.titleAr || '') + ' ' + (x.desc || '')).toLowerCase().indexOf(q) !== -1);
+    }
+    if (UI.view === 'today') list = list.filter((x) => !CLOSED.has(x.status) && (isOverdue(x) || x.due === today));
+    else if (UI.view === 'mine') list = list.filter((x) => x.assignee === DB.me || x.owner === DB.me);
+    else if (UI.view === 'following') list = list.filter((x) => (x.watchers || []).indexOf(DB.me) !== -1);
+
+    if (UI.filter === 'open') list = list.filter((x) => !CLOSED.has(x.status));
+    else if (UI.filter === 'overdue') list = list.filter((x) => isOverdue(x));
+    else if (UI.filter === 'today') list = list.filter((x) => x.due === today && !CLOSED.has(x.status));
+    else if (UI.filter === 'done') list = list.filter((x) => CLOSED.has(x.status));
+
+    return list.sort(function (a, b) {
+      const ac = CLOSED.has(a.status), bc = CLOSED.has(b.status);
+      if (ac !== bc) return ac ? 1 : -1;
+      const ao = isOverdue(a), bo = isOverdue(b);
+      if (ao !== bo) return ao ? -1 : 1;
+      const r = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+      if (r) return r;
+      return String(a.due || '9999').localeCompare(String(b.due || '9999'));
+    });
+  }
+
+  const NAV = [
+    { id: 'today', icon: 'focus', label: 'today', group: 'work' },
+    { id: 'mine', icon: 'mine', label: 'myTasks', group: 'work' },
+    { id: 'following', icon: 'eye', label: 'following', group: 'work' },
+    { id: 'all', icon: 'list', label: 'allTasks', group: 'work' },
+    { id: 'notifications', icon: 'bell', label: 'notifications', group: 'system' },
+    { id: 'outbox', icon: 'mail', label: 'outbox', group: 'system' },
+    { id: 'people', icon: 'users', label: 'people', group: 'system' },
+    { id: 'settings', icon: 'gear', label: 'settings', group: 'system' }
+  ];
+
+  function navCount(id) {
+    const today = todayIso();
+    if (id === 'today') return DB.tasks.filter((x) => !CLOSED.has(x.status) && (isOverdue(x) || x.due === today)).length;
+    if (id === 'mine') return DB.tasks.filter((x) => !CLOSED.has(x.status) && (x.assignee === DB.me || x.owner === DB.me)).length;
+    if (id === 'following') return DB.tasks.filter((x) => (x.watchers || []).indexOf(DB.me) !== -1 && !CLOSED.has(x.status)).length;
+    if (id === 'all') return DB.tasks.length;
+    if (id === 'notifications') return unreadCount();
+    if (id === 'outbox') return DB.outbox.filter((m) => m.state === 'composed').length;
+    return null;
+  }
+
+  function buildRail() {
+    const rail = el('aside', { class: 'rail', id: 'rail' }, [
+      el('div', { class: 'brand' }, [
+        el('div', { class: 'brand-mark' }, ['م']),
+        el('div', {}, [
+          el('div', { class: 'brand-name' }, [t('app')]),
+          el('div', { class: 'brand-sub' }, [t('appSub')])
+        ])
+      ])
+    ]);
+    const scroll = el('div', { class: 'rail-scroll' });
+    for (const group of ['work', 'system']) {
+      const box = el('div', { class: 'navgroup' }, [
+        el('div', { class: 'eyebrow' }, [t(group === 'work' ? 'navWork' : 'navSystem')])
+      ]);
+      for (const item of NAV.filter((n) => n.group === group)) {
+        const count = navCount(item.id);
+        box.appendChild(el('button', {
+          class: 'nav-item' + (UI.view === item.id ? ' on' : ''),
+          onclick: function () {
+            UI.view = item.id; UI.filter = '';
+            const r = document.getElementById('rail');
+            if (r) r.classList.remove('open');
+            rerender();
+          }
+        }, [
+          ic(item.icon),
+          t(item.label),
+          count !== null ? el('span', {
+            class: 'nav-count' + ((item.id === 'today' || item.id === 'notifications') && count > 0 ? ' hot' : '')
+          }, [String(count)]) : null
+        ]));
+      }
+      scroll.appendChild(box);
+    }
+    rail.appendChild(scroll);
+    const p = me();
+    rail.appendChild(el('div', { class: 'rail-foot' }, [
+      el('span', { class: 'avatar' }, [initials(p ? p.name : '?')]),
+      el('div', { style: { flex: '1', minWidth: '0' } }, [
+        el('div', {
+          style: { fontSize: '12.5px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+        }, [p ? (isAr() ? (p.nameAr || p.name) : p.name) : '—']),
+        el('div', { class: 'dim', style: { fontSize: '10.5px' } }, [t('me')])
+      ])
+    ]));
+    return rail;
+  }
+
+  function buildTopbar() {
+    const badge = unreadCount();
+    const bell = el('button', {
+      class: 'icon-btn', id: 'bellBtn', title: t('notifications'), 'aria-label': t('notifications'),
+      onclick: function (e) { e.stopPropagation(); UI.panel = !UI.panel; rerender(); }
+    }, [
+      ic('bell'),
+      badge > 0 ? el('span', { class: 'dot' }, [badge > 99 ? '99+' : String(badge)]) : null
+    ]);
+
+    return el('header', { class: 'topbar' }, [
+      el('button', {
+        class: 'icon-btn menu-btn', title: t('menu'), 'aria-label': t('menu'),
+        onclick: function () {
+          const r = document.getElementById('rail');
+          if (r) r.classList.toggle('open');
+        }
+      }, [ic('menu')]),
+      el('div', { class: 'searchbox' }, [
+        ic('search'),
+        el('input', {
+          placeholder: t('search'), value: UI.query, 'aria-label': t('search'),
+          oninput: function (e) { UI.query = e.target.value; renderStage(); }
+        })
+      ]),
+      el('div', { class: 'top-actions' }, [
+        el('span', { class: 'clock', id: 'clock' }, [clockText()]),
+        el('button', { class: 'btn primary sm', title: t('newTask'), onclick: newTaskDialog }, [
+          ic('plus'), el('span', { class: 'btn-label' }, [t('newTask')])
+        ]),
+        el('button', {
+          class: 'icon-btn', title: t('language'), 'aria-label': t('language'),
+          onclick: function () { setLang(isAr() ? 'en' : 'ar'); rerender(); }
+        }, [ic('globe')]),
+        bell
+      ])
+    ]);
+  }
+
+  function notifPanel() {
+    const items = DB.notifications.filter((n) => n.user === DB.me).slice(0, 40);
+    const list = el('div', { class: 'notif-list' });
+    if (items.length === 0) {
+      list.appendChild(el('div', { class: 'empty' }, [ic('bell'), el('h3', {}, [t('noNotifications')])]));
+    } else {
+      for (const n of items) list.appendChild(notifRow(n, true));
+    }
+    return el('div', {
+      class: 'notif-panel', role: 'dialog', 'aria-label': t('notifications'),
+      onclick: function (e) { e.stopPropagation(); }
+    }, [
+      el('div', { class: 'notif-head' }, [
+        el('b', { style: { fontSize: '13px' } }, [t('notifications')]),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn ghost sm', onclick: markAllRead }, [t('markAllRead')]),
+        el('button', {
+          class: 'btn ghost sm',
+          onclick: function () { UI.panel = false; UI.view = 'notifications'; rerender(); }
+        }, [t('viewAll')])
+      ]),
+      list
+    ]);
+  }
+
+  function notifRow(n, compact) {
+    return el('div', {
+      class: 'notif' + (n.read ? '' : ' unread'),
+      onclick: function () {
+        n.read = true;
+        writeStore();
+        if (compact) UI.panel = false;
+        if (n.task) openTask(n.task); else rerender();
+        rerender();
+      }
+    }, [
+      el('div', { class: 'notif-kind k-' + n.kind }, [ic(kindIcon(n.kind))]),
+      el('div', { class: 'notif-b' }, [
+        el('div', { class: 'notif-t' }, [t('k_' + n.kind)]),
+        el('div', { class: 'notif-x' }, [n.text]),
+        el('div', { class: 'notif-w' }, [(n.task ? n.task + ' · ' : '') + when(n.at)])
+      ])
+    ]);
+  }
+
+  function markAllRead() {
+    for (const n of DB.notifications) if (n.user === DB.me) n.read = true;
+    writeStore();
+    rerender();
+  }
+
+  /* ------------------------------------------------------------- the rows */
+  function taskRow(x) {
+    const status = STATUS_BY.get(x.status);
+    const done = CLOSED.has(x.status);
+    const overdue = isOverdue(x);
+    const inst = dueInstant(x.due, x.dueTime);
+    const soon = !overdue && inst !== null && !done && inst - Date.now() <= 2 * DAY;
+
+    return el('div', {
+      class: 'trow p-' + x.priority + (done ? ' done' : ''),
+      onclick: function () { openTask(x.id); }
+    }, [
+      el('button', {
+        class: 'tcheck' + (done ? ' on' : ''), title: t('completed'),
+        onclick: function (e) {
+          e.stopPropagation();
+          applyUpdate(x.id, { status: done ? 'progress' : 'done', progress: done ? x.progress : 100 });
+        }
+      }, [ic('check')]),
+      el('div', { class: 'tmain' }, [
+        el('div', { class: 'ttitle' }, [taskTitle(x)]),
+        el('div', { class: 'tmeta' }, [
+          el('span', { class: 'mono' }, [x.id]),
+          el('span', { class: 'pill k-' + (status ? status.kind : 'open') }, [statusLabel(x.status)]),
+          x.priority !== 'Medium' ? el('span', { class: 'pill p-' + x.priority }, [t('prio_' + x.priority)]) : null,
+          x.due ? el('span', {
+            class: 'pill' + (overdue ? ' overdue' : (soon ? ' duesoon' : ''))
+          }, [ic('clock'), x.due + (x.dueTime ? ' ' + x.dueTime : '')]) : null,
+          x.assignee ? el('span', {}, [t('assignee') + ': ' + personName(x.assignee)]) : null,
+          (x.watchers || []).indexOf(DB.me) !== -1
+            ? el('span', { class: 'pill', title: t('following') }, [ic('eye'), String(x.watchers.length)])
+            : null
+        ])
+      ]),
+      el('div', { class: 'progress', title: x.progress + '%' }, [el('i', { style: { width: x.progress + '%' } })])
+    ]);
+  }
+
+  function tile(kind, value, label, filter) {
+    return el('button', {
+      class: 'tile ' + kind + (UI.filter === filter ? ' on' : ''),
+      onclick: function () { UI.filter = UI.filter === filter ? '' : filter; rerender(); }
+    }, [
+      el('div', { class: 'tv' }, [String(value)]),
+      el('div', { class: 'tl' }, [label])
+    ]);
+  }
+
+  function taskListView() {
+    const list = visibleTasks();
+    const stack = el('div', { class: 'stack' });
+    const scope = UI.view === 'today'
+      ? DB.tasks.filter((x) => !CLOSED.has(x.status) && (isOverdue(x) || x.due === todayIso()))
+      : DB.tasks;
+
+    if (UI.view === 'today' || UI.view === 'all') {
+      stack.appendChild(el('div', { class: 'grid g4' }, [
+        tile('acc', scope.filter((x) => !CLOSED.has(x.status)).length, t('open'), 'open'),
+        tile('crit', scope.filter((x) => isOverdue(x)).length, t('overdue'), 'overdue'),
+        tile('warn', scope.filter((x) => x.due === todayIso() && !CLOSED.has(x.status)).length, t('dueToday'), 'today'),
+        tile('ok', scope.filter((x) => CLOSED.has(x.status)).length, t('completed'), 'done')
+      ]));
+    }
+
+    const rows = el('div', {});
+    if (list.length === 0) {
+      rows.appendChild(el('div', { class: 'empty' }, [
+        ic('list'), el('h3', {}, [t('noTasks')]), el('p', {}, [t('noTasksSub')])
+      ]));
+    } else {
+      for (const x of list) rows.appendChild(taskRow(x));
+    }
+
+    stack.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [
+        ic(UI.view === 'today' ? 'focus' : (UI.view === 'mine' ? 'mine' : (UI.view === 'following' ? 'eye' : 'list'))),
+        el('h2', {}, [t(UI.view === 'today' ? 'today' : (UI.view === 'mine' ? 'myTasks' : (UI.view === 'following' ? 'following' : 'allTasks')))]),
+        el('div', { class: 'spacer' }),
+        el('span', { class: 'dim mono', style: { fontSize: '12px' } }, [String(list.length)])
+      ]),
+      el('div', { class: 'card-body' }, [rows])
+    ]));
+    return stack;
+  }
+
+  /* ----------------------------------------------------------- the record */
+  function field(label, input) {
+    return el('div', { class: 'field' }, [el('label', {}, [label]), input]);
+  }
+  function select(options, value) {
+    const sel = el('select', {});
+    for (const opt of options) {
+      sel.appendChild(el('option', { value: opt[0], selected: String(opt[0]) === String(value) }, [opt[1]]));
+    }
+    sel.value = value === null || value === undefined ? '' : value;
+    return sel;
+  }
+  const peopleOptions = () => DB.people.map((p) => [p.id, isAr() ? (p.nameAr || p.name) : p.name]);
+
+  function applyUpdate(taskId, patch) {
+    const x = task(taskId);
+    if (!x) return;
+    const before = {
+      status: x.status, assignee: x.assignee, due: x.due, dueTime: x.dueTime, priority: x.priority
+    };
+    Object.assign(x, patch);
+    x.updatedAt = Date.now();
+
+    if (patch.status !== undefined && patch.status !== before.status) {
+      x.statusSince = Date.now();
+      x.completedAt = patch.status === 'done' ? Date.now() : null;
+    }
+    /* A moved deadline clears the "already announced" flags — otherwise a
+       rescheduled task would never speak up again. */
+    if ((patch.due !== undefined && patch.due !== before.due) ||
+        (patch.dueTime !== undefined && patch.dueTime !== before.dueTime)) {
+      x.overdueFlagged = false;
+      x.escalatedAt = null;
+      x.escalatedTo = null;
+    }
+
+    const actor = DB.me;
+    if (patch.assignee !== undefined && patch.assignee !== before.assignee) {
+      if (x.assignee) {
+        if ((x.watchers || []).indexOf(x.assignee) === -1) x.watchers.push(x.assignee);
+        notify({
+          user: x.assignee, kind: 'assign', task: x.id, actor: actor,
+          text: fmt('m_assigned', { actor: personName(actor), task: taskTitle(x) })
+        });
+      }
+      if (before.assignee) {
+        notify({
+          user: before.assignee, kind: 'reassign', task: x.id, actor: actor,
+          text: fmt('m_reassigned', { task: taskTitle(x) })
+        });
+      }
+    }
+    if (patch.status !== undefined && patch.status !== before.status) {
+      const text = patch.status === 'done'
+        ? fmt('m_complete', { actor: personName(actor), task: taskTitle(x) })
+        : fmt('m_status', { actor: personName(actor), task: taskTitle(x), status: statusLabel(x.status) });
+      notifyAudience(x.id, patch.status === 'done' ? 'complete' : 'status', text, actor);
+    }
+    if (patch.due !== undefined && patch.due !== before.due) {
+      notifyAudience(x.id, 'due', fmt('m_due', { task: taskTitle(x), date: x.due || '—' }), actor);
+    }
+
+    syncAutoReminder(x.id);
+    writeStore();
+    rerender();
+  }
+
+  function openTask(id) {
+    UI.drawer = id;
+    rerender();
+  }
+  function closeDrawer() {
+    UI.drawer = null;
+    rerender();
+  }
+
+  function drawer(x) {
+    const body = el('div', { class: 'drawer-body' });
+    const titleInput = el('input', { value: x.title });
+    const titleArInput = el('input', { value: x.titleAr || '', dir: 'rtl' });
+    const descInput = el('textarea', {}, [x.desc || '']);
+    const statusSel = select(STATUSES.map((s) => [s.id, isAr() ? s.nameAr : s.name]), x.status);
+    const prioSel = select(PRIORITIES.map((p) => [p, t('prio_' + p)]), x.priority);
+    const assigneeSel = select([['', t('unassigned')]].concat(peopleOptions()), x.assignee || '');
+    const dueInput = el('input', { type: 'date', value: x.due || '' });
+    const timeInput = el('input', { type: 'time', value: x.dueTime || '' });
+    const progInput = el('input', { type: 'number', min: '0', max: '100', value: String(x.progress) });
+
+    body.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'card-body' }, [
+        field(t('title'), titleInput),
+        field(t('titleAr'), titleArInput),
+        field(t('description'), descInput),
+        el('div', { class: 'grid g2' }, [
+          field(t('status'), statusSel),
+          field(t('priority'), prioSel),
+          field(t('assignee'), assigneeSel),
+          field(t('progress'), progInput),
+          field(t('due'), dueInput),
+          field(t('time'), timeInput)
+        ]),
+        el('div', { class: 'row' }, [
+          el('button', {
+            class: 'btn primary',
+            onclick: function () {
+              const progress = Math.max(0, Math.min(100, Number(progInput.value) || 0));
+              applyUpdate(x.id, {
+                title: titleInput.value.trim() || x.title,
+                titleAr: titleArInput.value.trim(),
+                desc: descInput.value,
+                status: statusSel.value,
+                priority: prioSel.value,
+                assignee: assigneeSel.value || null,
+                due: dueInput.value || '',
+                dueTime: timeInput.value || '',
+                progress: progress
+              });
+              banner(t('saved'));
+            }
+          }, [ic('check'), t('save')]),
+          el('div', { class: 'spacer' }),
+          el('button', {
+            class: 'btn danger sm',
+            onclick: function () {
+              if (!window.confirm(t('confirmDelete'))) return;
+              DB.tasks = DB.tasks.filter((y) => y.id !== x.id);
+              DB.comments = DB.comments.filter((c) => c.task !== x.id);
+              DB.checklist = DB.checklist.filter((c) => c.task !== x.id);
+              DB.reminders = DB.reminders.filter((r) => r.task !== x.id);
+              writeStore();
+              closeDrawer();
+            }
+          }, [ic('trash'), t('delete')])
+        ])
+      ])
+    ]));
+
+    /* المتابعون — the followers. */
+    const following = (x.watchers || []).indexOf(DB.me) !== -1;
+    const addSel = select([['', t('addWatcher')]].concat(peopleOptions()), '');
+    const chips = el('div', { class: 'row' });
+    if ((x.watchers || []).length === 0) {
+      chips.appendChild(el('span', { class: 'dim', style: { fontSize: '12px' } }, [t('notFollowing')]));
+    }
+    for (const w of x.watchers || []) {
+      const p = person(w);
+      if (!p) continue;
+      chips.appendChild(el('span', { class: 'watcher' }, [
+        el('span', { class: 'avatar sm' }, [initials(p.name)]),
+        isAr() ? (p.nameAr || p.name) : p.name,
+        el('button', {
+          title: t('remove'),
+          onclick: function () {
+            x.watchers = x.watchers.filter((id) => id !== w);
+            writeStore();
+            rerender();
+          }
+        }, [ic('close')])
+      ]));
+    }
+
+    body.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [ic('eye'), el('h2', {}, [t('watchers')])]),
+      el('div', { class: 'card-body', style: { display: 'flex', flexDirection: 'column', gap: '10px' } }, [
+        chips,
+        el('div', { class: 'row' }, [
+          el('button', {
+            class: 'chipbtn' + (following ? ' on' : ''),
+            onclick: function () {
+              if (following) x.watchers = x.watchers.filter((id) => id !== DB.me);
+              else x.watchers.push(DB.me);
+              writeStore();
+              rerender();
+            }
+          }, [ic('eye'), following ? t('unfollow') : t('follow')]),
+          addSel,
+          el('button', {
+            class: 'btn sm',
+            onclick: function () {
+              const target = addSel.value;
+              if (!target || x.watchers.indexOf(target) !== -1) return;
+              x.watchers.push(target);
+              if (target !== DB.me) {
+                notify({
+                  user: target, kind: 'watch', task: x.id, actor: DB.me,
+                  text: fmt('m_watch', { actor: personName(DB.me), task: taskTitle(x) })
+                });
+              }
+              writeStore();
+              rerender();
+            }
+          }, [ic('plus'), t('add')])
+        ])
+      ])
+    ]));
+
+    /* Checklist. */
+    const items = DB.checklist.filter((c) => c.task === x.id);
+    const checkInput = el('input', { placeholder: t('addItem') });
+    const checkBox = el('div', {});
+    for (const item of items) {
+      checkBox.appendChild(el('div', { class: 'switchrow' }, [
+        el('button', {
+          class: 'tcheck' + (item.done ? ' on' : ''),
+          onclick: function () { item.done = !item.done; writeStore(); rerender(); }
+        }, [ic('check')]),
+        el('div', { class: 'sl' }, [
+          el('b', { style: { fontWeight: '500', textDecoration: item.done ? 'line-through' : 'none' } }, [item.text])
+        ]),
+        el('button', {
+          class: 'btn ghost sm',
+          onclick: function () {
+            DB.checklist = DB.checklist.filter((c) => c.id !== item.id);
+            writeStore();
+            rerender();
+          }
+        }, [ic('close')])
+      ]));
+    }
+    body.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [ic('check'), el('h2', {}, [t('checklist')])]),
+      el('div', { class: 'card-body' }, [
+        checkBox,
+        el('div', { class: 'row', style: { marginTop: '10px' } }, [
+          el('div', { class: 'field', style: { flex: '1', margin: '0' } }, [checkInput]),
+          el('button', {
+            class: 'btn sm',
+            onclick: function () {
+              const text = checkInput.value.trim();
+              if (!text) return;
+              DB.checklist.push({ id: uid('k'), task: x.id, text: text, done: false });
+              writeStore();
+              rerender();
+            }
+          }, [ic('plus'), t('add')])
+        ])
+      ])
+    ]));
+
+    /* Comments, with @mentions. */
+    const commentInput = el('textarea', { placeholder: t('addComment') });
+    const commentBox = el('div', {});
+    const comments = DB.comments.filter((c) => c.task === x.id);
+    if (comments.length === 0) commentBox.appendChild(el('div', { class: 'dim', style: { fontSize: '12.5px' } }, ['—']));
+    for (const c of comments) {
+      const p = person(c.user);
+      commentBox.appendChild(el('div', { class: 'comment' }, [
+        el('span', { class: 'avatar sm' }, [initials(p ? p.name : '?')]),
+        el('div', { style: { flex: '1', minWidth: '0' } }, [
+          el('div', { class: 'ch' }, [(p ? (isAr() ? (p.nameAr || p.name) : p.name) : '—') + ' · ' + when(c.at)]),
+          el('div', { class: 'cx' }, [c.text])
+        ])
+      ]));
+    }
+    body.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [ic('chat'), el('h2', {}, [t('comments')])]),
+      el('div', { class: 'card-body' }, [
+        commentBox,
+        el('div', { style: { marginTop: '10px' } }, [
+          el('div', { class: 'field', style: { margin: '0 0 8px' } }, [commentInput]),
+          el('button', { class: 'btn primary sm', onclick: function () { postComment(x, commentInput.value); } },
+            [ic('chat'), t('send')])
+        ])
+      ])
+    ]));
+
+    /* Reminders. */
+    const remInput = el('input', { type: 'datetime-local' });
+    const remBox = el('div', {});
+    const reminders = DB.reminders.filter((r) => r.task === x.id);
+    if (reminders.length === 0) remBox.appendChild(el('div', { class: 'dim', style: { fontSize: '12.5px' } }, ['—']));
+    for (const r of reminders) {
+      remBox.appendChild(el('div', { class: 'switchrow' }, [
+        el('div', { class: 'sl' }, [
+          el('b', { class: 'mono', style: { fontWeight: '500' } }, [new Date(r.at).toLocaleString(isAr() ? 'ar' : 'en-GB')]),
+          el('span', {}, [r.fired ? '✓' : (r.auto ? 'auto' : '')])
+        ]),
+        el('button', {
+          class: 'btn ghost sm',
+          onclick: function () {
+            DB.reminders = DB.reminders.filter((y) => y.id !== r.id);
+            writeStore();
+            rerender();
+          }
+        }, [ic('close')])
+      ]));
+    }
+    body.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [ic('clock'), el('h2', {}, [t('reminders')])]),
+      el('div', { class: 'card-body' }, [
+        remBox,
+        el('div', { class: 'row', style: { marginTop: '10px' } }, [
+          el('div', { class: 'field', style: { flex: '1', margin: '0' } }, [remInput]),
+          el('button', {
+            class: 'btn sm',
+            onclick: function () {
+              if (!remInput.value) return;
+              const at = new Date(remInput.value).getTime();
+              if (!Number.isFinite(at)) return;
+              DB.reminders.push({ id: uid('r'), task: x.id, user: DB.me, at: at, fired: false, auto: false, note: '' });
+              writeStore();
+              rerender();
+            }
+          }, [ic('plus'), t('addReminder')])
+        ])
+      ])
+    ]));
+
+    return el('div', { class: 'drawer', role: 'dialog', 'aria-label': taskTitle(x) }, [
+      el('div', { class: 'drawer-head' }, [
+        el('span', { class: 'mono dim', style: { fontSize: '12px' } }, [x.id]),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'icon-btn', title: t('close'), 'aria-label': t('close'), onclick: closeDrawer }, [ic('close')])
+      ]),
+      body
+    ]);
+  }
+
+  function postComment(x, raw) {
+    const text = String(raw || '').trim();
+    if (!text) return;
+    DB.comments.push({ id: uid('c'), task: x.id, user: DB.me, text: text, at: Date.now() });
+
+    /* A mention is a stronger signal than a comment, so the people named are
+       lifted out of the general sweep. */
+    const handles = (text.match(/@([A-Za-z0-9._-]+)/g) || []).map((h) => h.slice(1).toLowerCase());
+    const mentioned = [];
+    if (handles.length) {
+      for (const p of DB.people) {
+        const handle = String(p.email || '').split('@')[0].toLowerCase();
+        if (p.id !== DB.me && handle && handles.indexOf(handle) !== -1) mentioned.push(p.id);
+      }
+    }
+    for (const target of mentioned) {
+      if ((x.watchers || []).indexOf(target) === -1) x.watchers.push(target);
+      notify({
+        user: target, kind: 'mention', task: x.id, actor: DB.me,
+        text: fmt('m_mention', { actor: personName(DB.me), task: taskTitle(x), text: text.slice(0, 120) })
+      });
+    }
+    for (const target of audience(x.id, [DB.me].concat(mentioned))) {
+      notify({
+        user: target, kind: 'comment', task: x.id, actor: DB.me,
+        text: fmt('m_comment', { actor: personName(DB.me), task: taskTitle(x), text: text.slice(0, 120) })
+      });
+    }
+    writeStore();
+    rerender();
+  }
+
+  /* --------------------------------------------------------- new task ---- */
+  function newTaskDialog() {
+    const titleInput = el('input', { placeholder: t('title') });
+    const titleArInput = el('input', { placeholder: t('titleAr'), dir: 'rtl' });
+    const descInput = el('textarea', {});
+    const assigneeSel = select([['', t('unassigned')]].concat(peopleOptions()), '');
+    const prioSel = select(PRIORITIES.map((p) => [p, t('prio_' + p)]), 'Medium');
+    const dueInput = el('input', { type: 'date' });
+
+    const close = function () { scrim.remove(); modal.remove(); };
+    const scrim = el('div', { class: 'scrim', onclick: close });
+    const modal = el('div', { class: 'modal' }, [
+      el('div', { class: 'modal-card' }, [
+        el('div', { class: 'modal-head' }, [ic('plus'), el('h2', {}, [t('newTask')])]),
+        el('div', { class: 'modal-body' }, [
+          field(t('title'), titleInput),
+          field(t('titleAr'), titleArInput),
+          field(t('description'), descInput),
+          el('div', { class: 'grid g2' }, [
+            field(t('assignee'), assigneeSel),
+            field(t('priority'), prioSel),
+            field(t('due'), dueInput)
+          ])
+        ]),
+        el('div', { class: 'modal-foot' }, [
+          el('button', { class: 'btn ghost', onclick: close }, [t('cancel')]),
+          el('button', {
+            class: 'btn primary',
+            onclick: function () {
+              const title = titleInput.value.trim();
+              if (!title) { titleInput.focus(); return; }
+              const now = Date.now();
+              const assignee = assigneeSel.value || null;
+              const watchers = [DB.me];
+              if (assignee && assignee !== DB.me) watchers.push(assignee);
+              const x = {
+                id: nextTaskId(), title: title, titleAr: titleArInput.value.trim(), desc: descInput.value,
+                status: assignee ? 'assigned' : 'new', priority: prioSel.value,
+                due: dueInput.value || '', dueTime: '', assignee: assignee, owner: DB.me,
+                progress: 0, watchers: watchers, reminderLead: 1, escalationDays: 3,
+                createdAt: now, updatedAt: now, statusSince: now, completedAt: null,
+                overdueFlagged: false, escalatedAt: null, escalatedTo: null
+              };
+              DB.tasks.unshift(x);
+              syncAutoReminder(x.id);
+              if (assignee) {
+                notify({
+                  user: assignee, kind: 'assign', task: x.id, actor: DB.me,
+                  text: fmt('m_assigned', { actor: personName(DB.me), task: taskTitle(x) })
+                });
+              }
+              writeStore();
+              close();
+              openTask(x.id);
+            }
+          }, [ic('check'), t('save')])
+        ])
+      ])
+    ]);
+    document.body.appendChild(scrim);
+    document.body.appendChild(modal);
+    titleInput.focus();
+  }
+
+  /* ------------------------------------------------------------- outbox -- */
+  function copyText(text) {
+    const done = function (ok) { banner(ok ? t('copied') : t('copyFailed')); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { fallback(); });
+      return;
+    }
+    fallback();
+    function fallback() {
+      try {
+        const area = el('textarea', { style: { position: 'fixed', opacity: '0', top: '0' } });
+        area.value = text;
+        document.body.appendChild(area);
+        area.select();
+        const ok = document.execCommand('copy');
+        area.remove();
+        done(ok);
+      } catch (err) { done(false); }
+    }
+  }
+
+  function saveFile(filename, data) {
+    const downloads = window.claude && window.claude.downloads;
+    if (!downloads) { banner(t('saveUnavailable')); return; }
+    downloads.save({ filename: filename, data: data }).then(function () {
+      banner(t('savedFile'));
+    }, function (err) {
+      /* Each outcome has its own correct response — a declined prompt is not
+         an error to retry, and an unusable view should stop offering. */
+      const code = err && err.code;
+      if (code === 'declined') banner(t('saveDeclined'));
+      else if (code === 'too_large') banner(t('saveUnavailable'));
+      else banner(t('saveUnavailable'));
+    });
+  }
+
+  function outboxView() {
+    const stack = el('div', { class: 'stack' });
+    stack.appendChild(el('div', { class: 'note' }, [
+      el('b', {}, [t('outboxSub')]), ' ', t('outboxNote')
+    ]));
+
+    const list = el('div', {});
+    if (DB.outbox.length === 0) {
+      list.appendChild(el('div', { class: 'empty' }, [ic('mail'), el('h3', {}, [t('noMessages')])]));
+    }
+    for (const m of DB.outbox.slice(0, 60)) {
+      const p = person(m.to);
+      const node = el('div', { class: 'msg' }, [
+        el('div', {
+          class: 'msg-head',
+          onclick: function () { if (m.state !== 'suppressed') node.classList.toggle('open'); }
+        }, [
+          el('div', { class: 'notif-kind k-' + m.kind }, [ic(kindIcon(m.kind))]),
+          el('div', { class: 'msg-sub' }, [m.subject]),
+          el('span', { class: 'pill mono' }, [m.toEmail || (p ? p.name : '—')]),
+          el('span', { class: 'state-' + m.state, style: { fontSize: '11.5px' } }, [t('st_' + m.state)]),
+          el('span', { class: 'dim mono', style: { fontSize: '11px' } }, [when(m.at)])
+        ]),
+        m.state === 'suppressed' ? null : el('div', { class: 'msg-body' }, [
+          el('pre', {}, [m.body]),
+          el('div', { class: 'row' }, [
+            el('button', { class: 'btn sm', onclick: function () { copyText(m.subject + '\n\n' + m.body); } },
+              [ic('copy'), t('copy')]),
+            el('button', {
+              class: 'btn sm',
+              onclick: function () { saveFile('mutabi-' + m.id + '.txt', m.subject + '\n\n' + m.body); }
+            }, [ic('down'), t('saveFile')]),
+            m.state === 'composed' ? el('button', {
+              class: 'btn sm',
+              onclick: function () { m.state = 'sent'; writeStore(); banner(t('markedSent')); rerender(); }
+            }, [ic('check'), t('markSent')]) : null
+          ])
+        ])
+      ]);
+      list.appendChild(node);
+    }
+
+    stack.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [
+        ic('mail'), el('h2', {}, [t('outbox')]),
+        el('div', { class: 'spacer' }),
+        el('span', { class: 'dim mono', style: { fontSize: '12px' } }, [String(DB.outbox.length)])
+      ]),
+      el('div', { class: 'card-body' }, [list])
+    ]));
+    return stack;
+  }
+
+  /* ------------------------------------------------------------- people -- */
+  function peopleView() {
+    const stack = el('div', { class: 'stack' });
+    const rows = el('div', {});
+    for (const p of DB.people) {
+      const nameInput = el('input', { value: p.name });
+      const emailInput = el('input', { type: 'email', value: p.email || '' });
+      const managerSel = select([['', '—']].concat(DB.people.filter((o) => o.id !== p.id).map((o) => [o.id, o.name])), p.manager || '');
+      rows.appendChild(el('div', { class: 'card', style: { marginBottom: '10px' } }, [
+        el('div', { class: 'card-body' }, [
+          el('div', { class: 'row', style: { marginBottom: '10px' } }, [
+            el('span', { class: 'avatar' }, [initials(p.name)]),
+            el('b', {}, [isAr() ? (p.nameAr || p.name) : p.name]),
+            p.id === DB.me ? el('span', { class: 'pill' }, [t('me')]) : null,
+            el('div', { class: 'spacer' }),
+            p.id === DB.me ? null : el('button', {
+              class: 'btn sm',
+              onclick: function () { DB.me = p.id; writeStore(); rerender(); }
+            }, [t('me')]),
+            DB.people.length > 1 && p.id !== DB.me ? el('button', {
+              class: 'btn ghost sm',
+              onclick: function () {
+                DB.people = DB.people.filter((o) => o.id !== p.id);
+                for (const x of DB.tasks) {
+                  if (x.assignee === p.id) x.assignee = null;
+                  if (x.owner === p.id) x.owner = DB.me;
+                  x.watchers = (x.watchers || []).filter((w) => w !== p.id);
+                }
+                writeStore();
+                rerender();
+              }
+            }, [ic('close'), t('removePerson')]) : null
+          ]),
+          el('div', { class: 'grid g2' }, [
+            field(t('name'), nameInput),
+            field(t('email'), emailInput),
+            field(t('manager'), managerSel)
+          ]),
+          el('button', {
+            class: 'btn sm',
+            onclick: function () {
+              p.name = nameInput.value.trim() || p.name;
+              p.email = emailInput.value.trim();
+              p.manager = managerSel.value || null;
+              writeStore();
+              banner(t('saved'));
+              rerender();
+            }
+          }, [ic('check'), t('save')])
+        ])
+      ]));
+    }
+
+    stack.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [
+        ic('users'), el('h2', {}, [t('people')]),
+        el('div', { class: 'spacer' }),
+        el('button', {
+          class: 'btn sm',
+          onclick: function () {
+            DB.people.push({ id: uid('p'), name: 'New person', nameAr: '', email: '', role: 'member', manager: DB.me });
+            writeStore();
+            rerender();
+          }
+        }, [ic('plus'), t('addPerson')])
+      ]),
+      el('div', { class: 'card-body' }, [
+        el('p', { class: 'hint', style: { marginBottom: '12px' } }, [t('teamSub')]),
+        rows
+      ])
+    ]));
+    return stack;
+  }
+
+  /* ----------------------------------------------------------- settings -- */
+  function switchRow(label, sub, checked, onChange) {
+    const input = el('input', { type: 'checkbox', checked: !!checked });
+    input.addEventListener('change', function () { onChange(input.checked, input); });
+    return el('div', { class: 'switchrow' }, [
+      el('div', { class: 'sl' }, [el('b', {}, [label]), sub ? el('span', {}, [sub]) : null]),
+      el('label', { class: 'switch' }, [input, el('i', {})])
+    ]);
+  }
+
+  function settingsView() {
+    const prefs = DB.prefs;
+    const stack = el('div', { class: 'stack' });
+    const save = function () { writeStore(); };
+
+    const soundState = el('div', { class: 'hint' });
+    Ring.onChange(function (s) {
+      soundState.textContent = !s.supported ? '—' : (s.unlocked ? t('soundReady') : t('soundBlocked'));
+    });
+
+    const inAppCard = el('div', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [ic('bell'), el('h2', {}, [t('inAppNotif')])]),
+      el('div', { class: 'card-body' }, [
+        el('p', { class: 'hint', style: { marginBottom: '6px' } }, [t('inAppNotifSub')]),
+        switchRow(t('inAppNotif'), '', prefs.inApp.enabled, function (on) { prefs.inApp.enabled = on; save(); }),
+        switchRow(t('soundOn'), t('soundOnSub'), prefs.inApp.sound, function (on) {
+          prefs.inApp.sound = on;
+          save();
+          if (on) Ring.unlock().then(function () { Ring.play('normal'); });
+        }),
+        switchRow(t('desktopOn'), t('desktopOnSub'), prefs.inApp.desktop, function (on, input) {
+          if (!on) { prefs.inApp.desktop = false; save(); return; }
+          requestDesktop().then(function (permission) {
+            if (permission !== 'granted') {
+              input.checked = false;
+              prefs.inApp.desktop = false;
+              banner(t('permissionDenied'));
+            } else {
+              prefs.inApp.desktop = true;
+            }
+            save();
+          });
+        }),
+        el('div', { class: 'row', style: { marginTop: '10px' } }, [
+          el('button', {
+            class: 'btn sm',
+            onclick: function () { Ring.unlock().then(function () { Ring.play('normal'); }); }
+          }, [ic('volume'), t('enableSound')]),
+          soundState
+        ]),
+        el('div', { style: { marginTop: '12px' } }, [
+          el('div', { class: 'eyebrow', style: { marginBottom: '4px' } }, [t('events')])
+        ].concat(EVENTS.map(function (key) {
+          return switchRow(t('ev_' + key), '', prefs.inApp.events[key] !== false, function (on) {
+            prefs.inApp.events[key] = on;
+            save();
+          });
+        })))
+      ])
+    ]);
+    stack.appendChild(inAppCard);
+
+    const modeSel = select([['all', t('emailAll')], ['critical', t('emailCritical')], ['off', t('emailOff')]], prefs.email.mode);
+    modeSel.addEventListener('change', function () { prefs.email.mode = modeSel.value; save(); });
+    stack.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [ic('mail'), el('h2', {}, [t('emailNotif')])]),
+      el('div', { class: 'card-body' }, [
+        field(t('emailMode'), modeSel),
+        el('div', {}, [
+          el('div', { class: 'eyebrow', style: { marginBottom: '4px' } }, [t('events')])
+        ].concat(EVENTS.map(function (key) {
+          return switchRow(t('ev_' + key), '', prefs.email.events[key] !== false, function (on) {
+            prefs.email.events[key] = on;
+            save();
+          });
+        })))
+      ])
+    ]));
+
+    const fromInput = el('input', { type: 'time', value: prefs.quiet.from });
+    const toInput = el('input', { type: 'time', value: prefs.quiet.to });
+    const onQuiet = function () {
+      prefs.quiet.from = fromInput.value || '21:00';
+      prefs.quiet.to = toInput.value || '07:00';
+      save();
+    };
+    fromInput.addEventListener('change', onQuiet);
+    toInput.addEventListener('change', onQuiet);
+    stack.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [ic('clock'), el('h2', {}, [t('quietHours')])]),
+      el('div', { class: 'card-body' }, [
+        el('p', { class: 'hint', style: { marginBottom: '6px' } }, [t('quietSub')]),
+        switchRow(t('quietHours'), '', prefs.quiet.enabled, function (on) { prefs.quiet.enabled = on; save(); }),
+        el('div', { class: 'grid g2' }, [field(t('from'), fromInput), field(t('to'), toInput)])
+      ])
+    ]));
+
+    stack.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [ic('volume'), el('h2', {}, [t('testNotif')])]),
+      el('div', { class: 'card-body' }, [
+        el('p', { class: 'hint', style: { marginBottom: '10px' } }, [t('testNotifSub')]),
+        el('button', {
+          class: 'btn primary',
+          onclick: function () {
+            /* The click is the gesture that earns the right to make a sound,
+               so unlock before the notification comes back. */
+            Ring.unlock().then(function () {
+              notify({ user: DB.me, kind: 'reminder', text: t('m_test'), force: true });
+              writeStore();
+              rerender();
+            });
+          }
+        }, [ic('bell'), t('testNotif')])
+      ])
+    ]));
+
+    const restoreInput = el('input', { type: 'file', accept: '.json,application/json', style: { display: 'none' } });
+    restoreInput.addEventListener('change', function () {
+      const file = restoreInput.files && restoreInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function () {
+        try {
+          const parsed = JSON.parse(String(reader.result));
+          if (!parsed || !Array.isArray(parsed.tasks)) throw new Error('shape');
+          DB = parsed;
+          for (const key of ['tasks', 'people', 'comments', 'checklist', 'reminders', 'notifications', 'outbox']) {
+            if (!Array.isArray(DB[key])) DB[key] = [];
+          }
+          DB.prefs = Object.assign(defaultPrefs(), DB.prefs || {});
+          writeStore();
+          banner(t('restoreDone'));
+          rerender();
+        } catch (err) {
+          banner(t('restoreFailed'));
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    stack.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'card-head' }, [ic('down'), el('h2', {}, [t('data')])]),
+      el('div', { class: 'card-body' }, [
+        el('p', { class: 'hint', style: { marginBottom: '10px' } }, [t('dataSub')]),
+        el('div', { class: 'row' }, [
+          el('button', {
+            class: 'btn sm',
+            onclick: function () { saveFile('mutabi-backup-' + todayIso() + '.json', JSON.stringify(DB, null, 2)); }
+          }, [ic('down'), t('backup')]),
+          el('button', { class: 'btn sm', onclick: function () { restoreInput.click(); } }, [t('restore')]),
+          el('button', {
+            class: 'btn danger sm',
+            onclick: function () {
+              if (!window.confirm(t('confirmReset'))) return;
+              DB = seedData();
+              LANG = DB.lang;
+              writeStore();
+              rerender();
+            }
+          }, [ic('trash'), t('reset')]),
+          restoreInput
+        ])
+      ])
+    ]));
+
+    return stack;
+  }
+
+  function notificationsView() {
+    const items = DB.notifications.filter((n) => n.user === DB.me).slice(0, 100);
+    const box = el('div', {});
+    if (items.length === 0) {
+      box.appendChild(el('div', { class: 'empty' }, [ic('bell'), el('h3', {}, [t('noNotifications')])]));
+    }
+    for (const n of items) box.appendChild(notifRow(n, false));
+    return el('div', { class: 'stack' }, [
+      el('div', { class: 'card' }, [
+        el('div', { class: 'card-head' }, [
+          ic('bell'), el('h2', {}, [t('notifications')]),
+          el('div', { class: 'spacer' }),
+          el('button', { class: 'btn sm', onclick: markAllRead }, [t('markAllRead')])
+        ]),
+        el('div', { class: 'card-body' }, [box])
+      ])
+    ]);
+  }
+
+  /* ------------------------------------------------------------- render -- */
+  function renderStage() {
+    const stage = document.getElementById('stage');
+    if (!stage) return;
+    if (UI.view === 'settings') mount(stage, settingsView());
+    else if (UI.view === 'outbox') mount(stage, outboxView());
+    else if (UI.view === 'people') mount(stage, peopleView());
+    else if (UI.view === 'notifications') mount(stage, notificationsView());
+    else mount(stage, taskListView());
+  }
+
+  function viewTitle() {
+    const map = {
+      today: 'today', mine: 'myTasks', following: 'following', all: 'allTasks',
+      notifications: 'notifications', outbox: 'outbox', people: 'people', settings: 'settings'
+    };
+    return t(map[UI.view] || 'allTasks');
+  }
+  function viewIcon() {
+    const item = NAV.filter((n) => n.id === UI.view)[0];
+    return item ? item.icon : 'list';
+  }
+
+  function rerender() {
+    document.body.setAttribute('dir', isAr() ? 'rtl' : 'ltr');
+    const shell = el('div', { class: 'shell' }, [
+      buildRail(),
+      el('div', { class: 'main' }, [
+        buildTopbar(),
+        el('div', { class: 'viewbar' }, [
+          el('h1', {}, [ic(viewIcon()), viewTitle()]),
+          el('div', { class: 'spacer' }),
+          UI.filter ? el('button', {
+            class: 'chipbtn on',
+            onclick: function () { UI.filter = ''; rerender(); }
+          }, [ic('close'), t(UI.filter === 'done' ? 'completed' : (UI.filter === 'today' ? 'dueToday' : UI.filter))]) : null,
+          memoryOnly ? el('span', { class: 'pill' }, [t('storageLost')]) : null
+        ]),
+        el('div', { class: 'stage', id: 'stage' })
+      ])
+    ]);
+
+    const children = [shell];
+    if (UI.panel) children.push(notifPanel());
+    mount(root, children);
+    renderStage();
+
+    document.querySelectorAll('.drawer, .scrim.drawer-scrim').forEach(function (n) { n.remove(); });
+    if (UI.drawer) {
+      const x = task(UI.drawer);
+      if (x) {
+        const scrim = el('div', { class: 'scrim drawer-scrim', onclick: closeDrawer });
+        document.body.appendChild(scrim);
+        document.body.appendChild(drawer(x));
+      } else {
+        UI.drawer = null;
+      }
+    }
+  }
+
+  document.addEventListener('click', function () {
+    if (!UI.panel) return;
+    UI.panel = false;
+    rerender();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (UI.panel) { UI.panel = false; rerender(); return; }
+    if (UI.drawer) closeDrawer();
+  });
+
+  /* --------------------------------------------------------------- boot -- */
+  setLang(LANG);
+  for (const x of DB.tasks) syncAutoReminder(x.id);
+  rerender();
+  runEngine();
+  writeStore();
+
+  /* The engine keeps running while the page is open, so a deadline that
+     passes mid-session announces itself without a reload. */
+  setInterval(runEngine, 30000);
+  setInterval(function () {
+    const node = document.getElementById('clock');
+    if (node) node.textContent = clockText();
+  }, 20000);
+}());
+</script>

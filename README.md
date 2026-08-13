@@ -21,6 +21,24 @@ live channel, a real background engine.
 
 ---
 
+## Two builds
+
+| | Artifact build | Server build |
+| --- | --- | --- |
+| Where it runs | claude.ai, no install — `artifact/mutabi.html` | your own host — `src/`, `public/` |
+| Data | this browser only (localStorage), with backup and restore | SQLite, shared by everyone |
+| People | one person plus a roster they manage | real accounts, sign-in, four roles |
+| Ring, bell, toasts | yes | yes |
+| Live updates between people | no — one browser | yes, over SSE |
+| Email | composed in full and collected in the Outbox to copy or save | sent automatically over SMTP |
+
+A published page cannot open an SMTP connection or hold shared server state, so
+the artifact build prepares each message in full rather than pretending to
+deliver it. Everything else — the follower model, the notification rules, quiet
+hours, the reminder and escalation engine — behaves the same in both.
+
+---
+
 ## Running it
 
 ```bash
