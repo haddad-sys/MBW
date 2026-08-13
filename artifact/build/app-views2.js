@@ -1333,7 +1333,7 @@
     var stale = document.querySelectorAll('.mut-overlay');
     for (var i = 0; i < stale.length; i++) stale[i].remove();
     if (!S.ready) {
-      V.mount(document.getElementById('root'), h('div', { class: 'min-h-screen bg-gradient-to-b from-sky-500 to-blue-700 flex items-center justify-center' }, [
+      V.mount(document.getElementById('root'), h('div', { class: 'min-h-screen bg-gradient-to-b from-sky-500 to-blue-700 flex items-center justify-center', dir: 'rtl' }, [
         h('div', { class: 'text-center text-white' }, [
           h('div', { class: 'text-5xl font-extrabold mb-2' }, 'متابِع'),
           h('div', { class: 'text-sky-200' }, 'جارٍ التحميل…')
@@ -1364,12 +1364,12 @@
       page,
       (perms.create && ['home', 'tasks', 'entities', 'library', 'more'].indexOf(view) !== -1) ? h('button', {
         class: 'fixed bottom-20 z-30 w-14 h-14 rounded-full bg-sky-500 text-white shadow-lg flex items-center justify-center active:bg-sky-600',
-        style: { insetInlineEnd: '16px' }, 'aria-label': 'ملاحظة جديدة',
+        style: { right: '16px' }, 'aria-label': 'ملاحظة جديدة',
         onclick: function () { go('addIssue', perms.scope === 'own' ? { entityId: S.auth.entityId } : {}); }
       }, [ic('plus', 26)]) : null,
       V.BottomNav()
     ]);
-    V.mount(rootEl, h('div', { class: 'min-h-screen bg-slate-200 flex justify-center' }, [shell]));
+    V.mount(rootEl, h('div', { class: 'min-h-screen bg-slate-200 flex justify-center', dir: 'rtl' }, [shell]));
   }
   V.render = render;
 

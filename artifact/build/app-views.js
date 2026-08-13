@@ -511,7 +511,7 @@
       ]));
     });
 
-    return h('div', { class: 'min-h-screen bg-gradient-to-b from-sky-500 to-blue-700 flex items-center justify-center px-4' }, [
+    return h('div', { class: 'min-h-screen bg-gradient-to-b from-sky-500 to-blue-700 flex items-center justify-center px-4', dir: 'rtl' }, [
       h('div', { class: 'w-full max-w-sm' }, [
         h('div', { class: 'text-center mb-8' }, [
           h('div', { class: 'w-20 h-20 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4' }, [ic('clipboard', 40)]),
@@ -695,7 +695,7 @@
 
     var body = h('div', { class: 'p-3 space-y-3' }, [
       h('div', { class: 'relative' }, [
-        h('div', { class: 'absolute text-slate-400', style: { insetInlineEnd: '12px', top: '50%', transform: 'translateY(-50%)' } }, [ic('search', 15)]),
+        h('div', { class: 'absolute text-slate-400', style: { right: '12px', top: '50%', transform: 'translateY(-50%)' } }, [ic('search', 15)]),
         searchIn
       ]),
       st.mode === 'list' ? chipRow(chips, function () { return st.sf; }, function (k) { st.sf = k; }) : null,

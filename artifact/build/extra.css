@@ -24,3 +24,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media (prefers-reduced-motion:reduce){.sUp,#bellBtn.ringing svg{animation:none}}
 input[type="date"],input[type="datetime-local"]{min-height:2.6rem}
 pre{margin:0}
+
+/* ---- right-to-left corrections ------------------------------------------ */
+html[dir="rtl"],body[dir="rtl"]{direction:rtl}
+/* The switch knob rests on the leading edge and travels toward the trailing
+   one — which is leftwards in a right-to-left document. */
+[dir="rtl"] .translate-x-5{transform:translateX(-1.25rem)}
+/* Latin identifiers (usernames, keys, emails) keep their own direction. */
+[dir="ltr"]{direction:ltr;text-align:left}

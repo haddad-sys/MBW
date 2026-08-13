@@ -1728,6 +1728,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media (prefers-reduced-motion:reduce){.sUp,#bellBtn.ringing svg{animation:none}}
 input[type="date"],input[type="datetime-local"]{min-height:2.6rem}
 pre{margin:0}
+
+/* ---- right-to-left corrections ------------------------------------------ */
+html[dir="rtl"],body[dir="rtl"]{direction:rtl}
+/* The switch knob rests on the leading edge and travels toward the trailing
+   one — which is leftwards in a right-to-left document. */
+[dir="rtl"] .translate-x-5{transform:translateX(-1.25rem)}
+/* Latin identifiers (usernames, keys, emails) keep their own direction. */
+[dir="ltr"]{direction:ltr;text-align:left}
 </style>
 <div id="root"></div>
 <script>
@@ -1747,6 +1755,15 @@ pre{margin:0}
    =========================================================================== */
 (function () {
   'use strict';
+
+  /* The document is Arabic and right-to-left. The host owns <html>, so the
+     direction is stamped here rather than in markup — before first paint, so
+     nothing renders left-to-right and then jumps. */
+  try {
+    document.documentElement.setAttribute('dir', 'rtl');
+    document.documentElement.setAttribute('lang', 'ar');
+    if (document.body) document.body.setAttribute('dir', 'rtl');
+  } catch (e) { /* nothing to stamp */ }
 
   /* ── helpers ──────────────────────────────────── */
   var NS = 'mutabea_v3';
@@ -2730,7 +2747,7 @@ pre{margin:0}
       ]));
     });
 
-    return h('div', { class: 'min-h-screen bg-gradient-to-b from-sky-500 to-blue-700 flex items-center justify-center px-4' }, [
+    return h('div', { class: 'min-h-screen bg-gradient-to-b from-sky-500 to-blue-700 flex items-center justify-center px-4', dir: 'rtl' }, [
       h('div', { class: 'w-full max-w-sm' }, [
         h('div', { class: 'text-center mb-8' }, [
           h('div', { class: 'w-20 h-20 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4' }, [ic('clipboard', 40)]),
@@ -2914,7 +2931,7 @@ pre{margin:0}
 
     var body = h('div', { class: 'p-3 space-y-3' }, [
       h('div', { class: 'relative' }, [
-        h('div', { class: 'absolute text-slate-400', style: { insetInlineEnd: '12px', top: '50%', transform: 'translateY(-50%)' } }, [ic('search', 15)]),
+        h('div', { class: 'absolute text-slate-400', style: { right: '12px', top: '50%', transform: 'translateY(-50%)' } }, [ic('search', 15)]),
         searchIn
       ]),
       st.mode === 'list' ? chipRow(chips, function () { return st.sf; }, function (k) { st.sf = k; }) : null,
@@ -4417,7 +4434,7 @@ pre{margin:0}
     var stale = document.querySelectorAll('.mut-overlay');
     for (var i = 0; i < stale.length; i++) stale[i].remove();
     if (!S.ready) {
-      V.mount(document.getElementById('root'), h('div', { class: 'min-h-screen bg-gradient-to-b from-sky-500 to-blue-700 flex items-center justify-center' }, [
+      V.mount(document.getElementById('root'), h('div', { class: 'min-h-screen bg-gradient-to-b from-sky-500 to-blue-700 flex items-center justify-center', dir: 'rtl' }, [
         h('div', { class: 'text-center text-white' }, [
           h('div', { class: 'text-5xl font-extrabold mb-2' }, 'متابِع'),
           h('div', { class: 'text-sky-200' }, 'جارٍ التحميل…')
@@ -4448,12 +4465,12 @@ pre{margin:0}
       page,
       (perms.create && ['home', 'tasks', 'entities', 'library', 'more'].indexOf(view) !== -1) ? h('button', {
         class: 'fixed bottom-20 z-30 w-14 h-14 rounded-full bg-sky-500 text-white shadow-lg flex items-center justify-center active:bg-sky-600',
-        style: { insetInlineEnd: '16px' }, 'aria-label': 'ملاحظة جديدة',
+        style: { right: '16px' }, 'aria-label': 'ملاحظة جديدة',
         onclick: function () { go('addIssue', perms.scope === 'own' ? { entityId: S.auth.entityId } : {}); }
       }, [ic('plus', 26)]) : null,
       V.BottomNav()
     ]);
-    V.mount(rootEl, h('div', { class: 'min-h-screen bg-slate-200 flex justify-center' }, [shell]));
+    V.mount(rootEl, h('div', { class: 'min-h-screen bg-slate-200 flex justify-center', dir: 'rtl' }, [shell]));
   }
   V.render = render;
 

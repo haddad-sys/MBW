@@ -15,6 +15,15 @@
 (function () {
   'use strict';
 
+  /* The document is Arabic and right-to-left. The host owns <html>, so the
+     direction is stamped here rather than in markup — before first paint, so
+     nothing renders left-to-right and then jumps. */
+  try {
+    document.documentElement.setAttribute('dir', 'rtl');
+    document.documentElement.setAttribute('lang', 'ar');
+    if (document.body) document.body.setAttribute('dir', 'rtl');
+  } catch (e) { /* nothing to stamp */ }
+
   /* ── helpers ──────────────────────────────────── */
   var NS = 'mutabea_v3';
   var ARD = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
