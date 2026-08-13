@@ -1,329 +1,201 @@
+/* Notifications: the badge, the live channel, and the mail queue behind it. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { startTestServer, login, client } from './helpers.js';
+import { admin, base, db, listen, makeEntity, member, stop } from './helpers.js';
 
-let ctx;
-let admin;
-let layla;
-let sara;
-let omar;
-let mailer;
-let notifySvc;
-let db;
+test.after(stop);
 
-test.before(async () => {
-  ctx = await startTestServer();
-  admin = await login(ctx.base, 'admin@mutabi.local');
-  layla = await login(ctx.base, 'layla@mutabi.local');
-  sara = await login(ctx.base, 'sara@mutabi.local');
-  omar = await login(ctx.base, 'omar@mutabi.local');
-  mailer = await import('../src/services/mailer.js');
-  notifySvc = await import('../src/services/notify.js');
-  db = (await import('../src/db/index.js')).getDb();
-});
+const world = {};
 
-test.after(async () => { await ctx.close(); });
-
-function mailFor(userId, kind) {
-  return db
-    .prepare('SELECT * FROM emails WHERE to_user = ? AND kind = ? ORDER BY created_at DESC LIMIT 1')
-    .get(userId, kind);
-}
-
-test('assigning work notifies the assignee in the app and by email', async () => {
-  const res = await admin.post('/api/tasks', {
-    title: 'Install the site meter',
-    titleAr: 'تركيب عدّاد الموقع',
-    assignee: 'u_sara',
-    dueDate: '2099-06-01',
+test('setup', async () => {
+  world.admin = await admin();
+  world.entityId = await makeEntity(world.admin, 'فرع الفنطاس');
+  world.branch = await member(world.admin, {
+    username: 'badr', name: 'بدر', email: 'badr@example.com', entityId: world.entityId,
   });
-  assert.equal(res.status, 201);
-
-  const inbox = await sara.get('/api/notifications');
-  const assign = inbox.body.notifications.find((n) => n.kind === 'assign' && n.task === res.body.task.id);
-  assert.ok(assign, 'the assignee must have an in-app notification');
-  assert.equal(assign.read, 0);
-  assert.match(assign.text, /assigned you/);
-  assert.ok(assign.text_ar.includes('أسند'), 'the Arabic twin must be stored too');
-  assert.ok(inbox.body.unread >= 1);
-
-  const mail = mailFor('u_sara', 'assign');
-  assert.ok(mail, 'an email must be queued for the assignee');
-  assert.equal(mail.to_email, 'sara@mutabi.local');
-  assert.equal(mail.state, 'queued');
-  /* Sara reads Arabic, so her copy is Arabic — the language belongs to the
-     reader, not the sender. */
-  assert.ok(mail.subject.includes('أُسندت إليك مهمة'));
-  assert.ok(mail.html.includes('dir="rtl"'));
-  assert.ok(mail.html.includes(res.body.task.id));
+  world.cats = (await world.admin.get('/api/bootstrap')).body.entities
+    .find((e) => e.id === world.entityId).categories;
 });
 
-test('a person is not notified about their own action', async () => {
-  const before = (await admin.get('/api/notifications/count')).body.unread;
-  await admin.post('/api/tasks', { title: 'Self assigned', assignee: 'u_admin' });
-  const after = (await admin.get('/api/notifications/count')).body.unread;
-  assert.equal(after, before, 'assigning work to yourself must not notify you');
-});
+test('an application notifies the administrator, in the app and by mail', async () => {
+  const before = (await world.admin.get('/api/bootstrap')).body.unread;
+  const mailBefore = (await world.admin.get('/api/admin/emails')).body.emails.length;
 
-test('queued mail is actually delivered by the transport and recorded', async () => {
-  const result = await mailer.flushEmails();
-  assert.ok(result.sent > 0);
-  assert.equal(result.failed, 0);
-  const mail = mailFor('u_sara', 'assign');
-  assert.equal(mail.state, 'sent');
-  assert.ok(mail.sent_at > 0);
-  assert.equal(mail.attempts, 1);
-  assert.ok(mail.message_id, 'the transport response must be recorded');
-});
-
-test('every follower of a task hears about a status change, and the actor does not', async () => {
-  const created = await admin.post('/api/tasks', { title: 'Followed work', assignee: 'u_sara' });
-  const id = created.body.task.id;
-  await admin.post(`/api/tasks/${id}/watchers`, { user: 'u_omar' });
-
-  const omarBefore = (await omar.get('/api/notifications/count')).body.unread;
-  const saraBefore = (await sara.get('/api/notifications/count')).body.unread;
-  const adminBefore = (await admin.get('/api/notifications/count')).body.unread;
-
-  await admin.patch(`/api/tasks/${id}`, { status: 'progress' });
-
-  assert.equal((await omar.get('/api/notifications/count')).body.unread, omarBefore + 1, 'a follower must be told');
-  assert.equal((await sara.get('/api/notifications/count')).body.unread, saraBefore + 1, 'the assignee must be told');
-  assert.equal((await admin.get('/api/notifications/count')).body.unread, adminBefore, 'the actor must not be told');
-});
-
-test('completing a task raises the complete kind, not a bare status change', async () => {
-  const created = await admin.post('/api/tasks', { title: 'To be completed', assignee: 'u_sara' });
-  await admin.patch(`/api/tasks/${created.body.task.id}`, { status: 'done' });
-  const inbox = await sara.get('/api/notifications');
-  const item = inbox.body.notifications.find((n) => n.task === created.body.task.id);
-  assert.equal(item.kind, 'complete');
-});
-
-test('a mention outranks the general comment sweep', async () => {
-  const created = await admin.post('/api/tasks', { title: 'Mention host', assignee: 'u_sara' });
-  const id = created.body.task.id;
-  await admin.post(`/api/tasks/${id}/watchers`, { user: 'u_omar' });
-
-  const res = await sara.post(`/api/tasks/${id}/comments`, { text: 'Ready for review @admin — please look' });
-  assert.equal(res.status, 201);
-
-  const adminInbox = await admin.get('/api/notifications');
-  const mine = adminInbox.body.notifications.filter((n) => n.task === id);
-  assert.equal(mine[0].kind, 'mention', 'the mentioned person gets a mention');
-
-  const omarInbox = await omar.get('/api/notifications');
-  const omarItem = omarInbox.body.notifications.find((n) => n.task === id);
-  assert.equal(omarItem.kind, 'comment', 'other followers get a comment');
-});
-
-test('adding somebody else as a follower tells them; following yourself is silent', async () => {
-  const created = await admin.post('/api/tasks', { title: 'Watcher notice' });
-  const id = created.body.task.id;
-
-  const before = (await omar.get('/api/notifications/count')).body.unread;
-  await admin.post(`/api/tasks/${id}/watchers`, { user: 'u_omar' });
-  assert.equal((await omar.get('/api/notifications/count')).body.unread, before + 1);
-
-  const laylaBefore = (await layla.get('/api/notifications/count')).body.unread;
-  await layla.post(`/api/tasks/${id}/watchers`, {});
-  assert.equal((await layla.get('/api/notifications/count')).body.unread, laylaBefore, 'choosing to follow is not news to yourself');
-});
-
-test('email mode "off" suppresses the message but keeps the in-app record', async () => {
-  const target = await login(ctx.base, 'omar@mutabi.local');
-  await target.put('/api/auth/me/prefs', {
-    email: { mode: 'off' },
-    inApp: { enabled: true, sound: true },
+  const anon = (await import('./helpers.js')).client();
+  await anon.post('/api/auth/register', {
+    name: 'ريم', username: 'reem', email: 'reem@example.com', password: 'Reem@2026',
   });
 
-  const created = await admin.post('/api/tasks', { title: 'Silent email', assignee: 'u_omar' });
-  const inbox = await target.get('/api/notifications');
-  assert.ok(inbox.body.notifications.some((n) => n.task === created.body.task.id), 'the bell still rings');
+  const after = (await world.admin.get('/api/bootstrap')).body;
+  assert.ok(after.unread > before, 'the badge advanced');
+  assert.equal(after.pendingRegistrations, 1);
 
-  const mail = mailFor('u_omar', 'assign');
-  assert.equal(mail.state, 'suppressed');
-  assert.match(mail.error, /disabled email/);
+  const list = (await world.admin.get('/api/notifications')).body.notifications;
+  assert.equal(list[0].event, 'registration');
+  assert.match(list[0].title, /ريم/);
 
-  await target.put('/api/auth/me/prefs', { email: { mode: 'all' }, inApp: { enabled: true, sound: true } });
+  const mail = (await world.admin.get('/api/admin/emails')).body.emails;
+  assert.ok(mail.length > mailBefore, 'a message was queued');
+  assert.match(mail[0].subject, /طلب تسجيل/);
 });
 
-test('email mode "critical" only mails critical work', async () => {
-  const target = await login(ctx.base, 'omar@mutabi.local');
-  await target.put('/api/auth/me/prefs', { email: { mode: 'critical' } });
-
-  const low = await admin.post('/api/tasks', { title: 'Routine item', assignee: 'u_omar', priority: 'Low' });
-  assert.equal(mailFor('u_omar', 'assign').state, 'suppressed');
-  assert.equal(mailFor('u_omar', 'assign').task, low.body.task.id);
-
-  const critical = await admin.post('/api/tasks', { title: 'Burst pipeline', assignee: 'u_omar', priority: 'Critical' });
-  const mail = mailFor('u_omar', 'assign');
-  assert.equal(mail.task, critical.body.task.id);
-  assert.equal(mail.state, 'queued');
-
-  await target.put('/api/auth/me/prefs', { email: { mode: 'all' } });
+test('a decision reaches the applicant on the address they applied with', async () => {
+  const queue = await world.admin.get('/api/admin/registrations');
+  const row = queue.body.registrations.find((r) => r.username === 'reem');
+  await world.admin.post(`/api/admin/registrations/${row.id}/approve`, {
+    role: 'branch', entityId: world.entityId,
+  });
+  const mail = (await world.admin.get('/api/admin/emails')).body.emails;
+  const toApplicant = mail.find((m) => m.to_email === 'reem@example.com');
+  assert.ok(toApplicant, 'the applicant was written to');
+  assert.match(toApplicant.subject, /اعتماد الحساب/);
 });
 
-test('muting an event mutes it on both surfaces', async () => {
-  const target = await login(ctx.base, 'omar@mutabi.local');
-  await target.put('/api/auth/me/prefs', {
-    email: { mode: 'all', events: { assign: false } },
-    inApp: { enabled: true, sound: true, events: { assign: false } },
+test('a rejection says so, to the applicant', async () => {
+  const anon = (await import('./helpers.js')).client();
+  await anon.post('/api/auth/register', {
+    name: 'فهد', username: 'fahad', email: 'fahad@example.com', password: 'Fahad@2026',
   });
-
-  const before = (await target.get('/api/notifications/count')).body.unread;
-  const created = await admin.post('/api/tasks', { title: 'Muted assignment', assignee: 'u_omar' });
-  assert.equal((await target.get('/api/notifications/count')).body.unread, before, 'a muted event raises nothing');
-  const mail = mailFor('u_omar', 'assign');
-  assert.equal(mail.task, created.body.task.id);
-  assert.equal(mail.state, 'suppressed');
-
-  await target.put('/api/auth/me/prefs', {
-    email: { mode: 'all', events: { assign: true } },
-    inApp: { enabled: true, sound: true, events: { assign: true } },
-  });
+  const queue = await world.admin.get('/api/admin/registrations');
+  const row = queue.body.registrations.find((r) => r.username === 'fahad');
+  await world.admin.post(`/api/admin/registrations/${row.id}/reject`, { note: 'لا يوجد شاغر' });
+  const mail = (await world.admin.get('/api/admin/emails')).body.emails;
+  const toApplicant = mail.find((m) => m.to_email === 'fahad@example.com');
+  assert.ok(toApplicant);
+  assert.match(toApplicant.body, /لا يوجد شاغر/);
 });
 
-test('an escalation ignores every mute, because that is the point of one', async () => {
-  const target = await login(ctx.base, 'omar@mutabi.local');
-  await target.put('/api/auth/me/prefs', {
-    email: { mode: 'off' },
-    inApp: { enabled: false, sound: false },
-    quiet: { enabled: true, from: '00:00', to: '23:59' },
+test('a new record wakes the administrator over the live channel', async () => {
+  const stream = await listen(world.admin.token, 3);
+  await new Promise((r) => setTimeout(r, 150));
+
+  await world.branch.post('/api/issues', {
+    entityId: world.entityId, categoryId: world.cats[0].id, title: 'انقطاع الكهرباء عن المطبخ',
+    priority: 'urgent',
   });
 
-  const before = (await target.get('/api/notifications/count')).body.unread;
-  const result = notifySvc.notify({
-    userId: 'u_omar',
-    kind: 'escalation',
-    text: 'This cannot be muted.',
-    textAr: 'لا يمكن كتم هذا.',
-  });
-
-  assert.equal(result.inApp, true, 'a mandatory kind is recorded whatever the preference says');
-  assert.equal(result.sound, true, 'a mandatory kind rings even inside quiet hours');
-  assert.ok(result.emailId, 'a mandatory kind is emailed whatever the preference says');
-  assert.equal((await target.get('/api/notifications/count')).body.unread, before + 1);
-
-  await target.put('/api/auth/me/prefs', {
-    email: { mode: 'all' },
-    inApp: { enabled: true, sound: true },
-    quiet: { enabled: true, from: '21:00', to: '07:00' },
-  });
+  const events = await stream.done();
+  const kinds = events.map((e) => e.event);
+  assert.ok(kinds.includes('hello'), 'the channel opens with a greeting');
+  const note = events.find((e) => e.event === 'notification');
+  assert.ok(note, 'the notification arrived without polling');
+  assert.match(note.data.subject, /انقطاع الكهرباء/);
+  assert.equal(typeof note.data.urgent, 'boolean');
+  assert.ok(events.some((e) => e.event === 'badge'), 'and the badge count with it');
 });
 
-test('quiet hours mute the ring and hold the email rather than dropping it', async () => {
-  const target = await login(ctx.base, 'omar@mutabi.local');
-  /* A window that certainly contains "now", whenever the suite runs. */
-  await target.put('/api/auth/me/prefs', {
-    email: { mode: 'all' },
-    inApp: { enabled: true, sound: true },
-    quiet: { enabled: true, from: '00:00', to: '23:59' },
+test('nobody is told about their own action', async () => {
+  const before = (await world.branch.get('/api/bootstrap')).body.unread;
+  await world.branch.post('/api/issues', {
+    entityId: world.entityId, categoryId: world.cats[0].id, title: 'ملاحظة صامتة',
   });
-
-  const result = notifySvc.notify({
-    userId: 'u_omar',
-    kind: 'comment',
-    text: 'Quiet hours check',
-    textAr: 'فحص ساعات الهدوء',
-  });
-
-  assert.equal(result.quiet, true);
-  assert.equal(result.inApp, true, 'the notification is still recorded');
-  assert.equal(result.sound, false, 'but it does not make a sound');
-  assert.ok(result.emailId, 'and the email is queued');
-
-  const mail = db.prepare('SELECT * FROM emails WHERE id = ?').get(result.emailId);
-  assert.equal(mail.state, 'queued');
-  assert.ok(mail.next_try_at > Date.now(), 'the email waits for the window to close');
-
-  const flushed = await mailer.flushEmails();
-  const stillQueued = db.prepare('SELECT * FROM emails WHERE id = ?').get(result.emailId);
-  assert.equal(stillQueued.state, 'queued', 'a held email is not sent early');
-  assert.ok(flushed.sent >= 0);
-
-  await target.put('/api/auth/me/prefs', {
-    email: { mode: 'all' },
-    inApp: { enabled: true, sound: true },
-    quiet: { enabled: true, from: '21:00', to: '07:00' },
-  });
+  const after = (await world.branch.get('/api/bootstrap')).body.unread;
+  assert.equal(after, before, 'the author gets no notification of their own work');
 });
 
-test('preferences round-trip and unknown values fall back to the default', async () => {
-  const res = await sara.put('/api/auth/me/prefs', {
-    email: { mode: 'nonsense', events: { assign: false } },
-    inApp: { sound: false, desktop: true },
-    quiet: { enabled: false, from: '25:99', to: '07:30' },
-    digest: true,
-  });
-  assert.equal(res.status, 200);
-  assert.equal(res.body.prefs.email.mode, 'all', 'an unknown mode falls back rather than disabling mail');
-  assert.equal(res.body.prefs.email.events.assign, false);
-  assert.equal(res.body.prefs.inApp.sound, false);
-  assert.equal(res.body.prefs.inApp.desktop, true);
-  assert.equal(res.body.prefs.quiet.from, '21:00', 'a malformed time falls back');
-  assert.equal(res.body.prefs.quiet.to, '07:30');
-  assert.equal(res.body.prefs.digest, true);
+test('the badge clears on read, one at a time and all at once', async () => {
+  const list = (await world.admin.get('/api/notifications')).body.notifications;
+  const unread = list.filter((n) => !n.read);
+  assert.ok(unread.length >= 2, 'there is something to clear');
 
-  const me = await sara.get('/api/auth/me');
-  assert.equal(me.body.user.prefs.inApp.sound, false);
+  const one = await world.admin.post('/api/notifications/read', { ids: [unread[0].id] });
+  assert.equal(one.status, 200);
+  assert.equal(one.body.unread, unread.length - 1);
 
-  await sara.put('/api/auth/me/prefs', { email: { mode: 'all' }, inApp: { sound: true, desktop: false } });
-});
-
-test('marking read moves the badge, and read-all clears it', async () => {
-  const inbox = await sara.get('/api/notifications');
-  const unread = inbox.body.notifications.filter((n) => !n.read);
-  if (unread.length) {
-    const res = await sara.post('/api/notifications/read', { ids: [unread[0].id] });
-    assert.equal(res.body.changed, 1);
-    assert.equal(res.body.unread, inbox.body.unread - 1);
-  }
-  const all = await sara.post('/api/notifications/read-all');
+  const all = await world.admin.post('/api/notifications/read-all');
   assert.equal(all.body.unread, 0);
-  assert.equal((await sara.get('/api/notifications/count')).body.unread, 0);
+  assert.equal((await world.admin.get('/api/bootstrap')).body.unread, 0);
 });
 
-test('marking read needs at least one id', async () => {
-  const res = await sara.post('/api/notifications/read', { ids: [] });
-  assert.equal(res.status, 400);
+test('a switched-off event raises nothing at all', async () => {
+  const cfg = (await world.admin.get('/api/admin/notifications-config')).body.notif;
+  await world.admin.put('/api/admin/notifications-config', {
+    ...cfg, types: { ...cfg.types, taskAdded: false },
+  });
+
+  const unreadBefore = (await world.admin.get('/api/bootstrap')).body.unread;
+  const mailBefore = (await world.admin.get('/api/admin/emails')).body.emails.length;
+  await world.branch.post('/api/issues', {
+    entityId: world.entityId, categoryId: world.cats[0].id, title: 'لن يُشعر بها أحد',
+  });
+  assert.equal((await world.admin.get('/api/bootstrap')).body.unread, unreadBefore);
+  const mailAfter = (await world.admin.get('/api/admin/emails')).body.emails;
+  assert.equal(mailAfter.length, mailBefore + 1, 'the attempt is still logged');
+  assert.equal(mailAfter[0].state, 'suppressed', 'as suppressed, not sent');
+
+  await world.admin.put('/api/admin/notifications-config', { ...cfg, types: { ...cfg.types, taskAdded: true } });
 });
 
-test('one person cannot read or delete another person notifications', async () => {
-  const created = await admin.post('/api/tasks', { title: 'Private notice', assignee: 'u_sara' });
-  const saraInbox = await sara.get('/api/notifications');
-  const target = saraInbox.body.notifications.find((n) => n.task === created.body.task.id);
-  assert.ok(target);
-
-  const stolen = await omar.post('/api/notifications/read', { ids: [target.id] });
-  assert.equal(stolen.body.changed, 0, 'marking somebody else notification read must do nothing');
-  const deleted = await omar.del(`/api/notifications/${target.id}`);
-  assert.equal(deleted.body.deleted, false);
-  const still = db.prepare('SELECT * FROM notifications WHERE id = ?').get(target.id);
-  assert.ok(still, 'the record must survive another person delete attempt');
+test('turning notifications off entirely stops everything', async () => {
+  const cfg = (await world.admin.get('/api/admin/notifications-config')).body.notif;
+  await world.admin.put('/api/admin/notifications-config', { ...cfg, enabled: false });
+  const before = (await world.admin.get('/api/bootstrap')).body.unread;
+  await world.branch.post('/api/issues', {
+    entityId: world.entityId, categoryId: world.cats[0].id, title: 'صمت تام',
+  });
+  assert.equal((await world.admin.get('/api/bootstrap')).body.unread, before);
+  await world.admin.put('/api/admin/notifications-config', { ...cfg, enabled: true });
 });
 
-test('the test notification travels the real path', async () => {
-  const before = (await layla.get('/api/notifications/count')).body.unread;
-  const res = await layla.post('/api/notifications/test');
+test('the test button reaches the person who pressed it', async () => {
+  const before = (await world.admin.get('/api/bootstrap')).body.unread;
+  const res = await world.admin.post('/api/admin/notifications-test');
   assert.equal(res.status, 200);
-  assert.equal(res.body.result.inApp, true);
-  assert.ok(res.body.result.emailId);
-  assert.equal((await layla.get('/api/notifications/count')).body.unread, before + 1);
+  assert.ok(res.body.result.inApp >= 1);
+  assert.ok((await world.admin.get('/api/bootstrap')).body.unread > before);
 });
 
-test('the email log is administrator-only and reports the transport', async () => {
-  assert.equal((await sara.get('/api/admin/emails')).status, 403);
-  const res = await admin.get('/api/admin/emails');
-  assert.equal(res.status, 200);
-  assert.equal(res.body.transport, 'json');
-  assert.ok(res.body.emails.length > 0);
-  assert.ok(res.body.emails.every((m) => ['queued', 'sent', 'failed', 'suppressed'].includes(m.state)));
+test('the queue drains and each message records its attempt', async () => {
+  const queued = db.prepare("SELECT COUNT(*) c FROM emails WHERE state = 'queued'").get().c;
+  assert.ok(queued > 0, 'there is mail waiting');
+  const flushed = await world.admin.post('/api/admin/mail/flush');
+  assert.equal(flushed.status, 200);
+  assert.equal(flushed.body.failed, 0);
+  assert.ok(flushed.body.sent >= 1);
+  assert.equal(db.prepare("SELECT COUNT(*) c FROM emails WHERE state = 'queued'").get().c, 0);
+  assert.ok(db.prepare("SELECT COUNT(*) c FROM emails WHERE state = 'sent' AND attempts > 0").get().c >= 1);
 });
 
-test('mail verification answers without a server configured', async () => {
-  const res = await admin.get('/api/admin/mail/verify');
+test('a message is addressed, subjected and bodied in Arabic', async () => {
+  const row = db.prepare("SELECT * FROM emails WHERE state = 'sent' ORDER BY created_at DESC").get();
+  assert.match(row.subject, /^\[متابِع\]/);
+  assert.match(row.html, /dir="rtl"/);
+  assert.ok(row.body && row.body.length > 10, 'a plain-text alternative exists');
+});
+
+test('the engine flags what has fallen due', async () => {
+  const overdue = await world.admin.post('/api/issues', {
+    entityId: world.entityId, categoryId: world.cats[0].id, title: 'متأخرة منذ أسبوع',
+    dueDate: Date.now() - 7 * 86400000,
+  });
+  assert.equal(overdue.status, 201);
+  const tick = await world.admin.post('/api/admin/tick');
+  assert.equal(tick.status, 200);
+  assert.ok(tick.body.overdue >= 1, 'the overdue record was picked up');
+
+  const notes = (await world.admin.get('/api/notifications')).body.notifications;
+  assert.ok(notes.some((n) => n.event === 'overdue'), 'and it raised a notification');
+
+  /* A second tick must not repeat itself. */
+  const again = await world.admin.post('/api/admin/tick');
+  assert.equal(again.body.overdue, 0, 'nothing is flagged twice');
+});
+
+test('the live channel refuses a caller without a token', async () => {
+  const res = await fetch(`${base}/api/stream`, { headers: { accept: 'text/event-stream' } });
+  assert.equal(res.status, 401);
+  await res.text();
+});
+
+test('the mail transport reports itself', async () => {
+  const res = await world.admin.get('/api/admin/mail/verify');
   assert.equal(res.status, 200);
   assert.equal(res.body.ok, true);
-  assert.equal(res.body.transport, 'json');
+  assert.equal((await world.admin.get('/api/admin/emails')).body.transport, 'json');
+});
+
+test('a branch account cannot touch the notification settings', async () => {
+  assert.equal((await world.branch.get('/api/admin/notifications-config')).status, 403);
+  assert.equal((await world.branch.post('/api/admin/mail/flush')).status, 403);
+  assert.equal((await world.branch.post('/api/admin/tick')).status, 403);
 });

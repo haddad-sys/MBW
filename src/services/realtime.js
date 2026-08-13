@@ -1,8 +1,7 @@
-/* Server-sent events hub.
-   One process, one map of userId -> open responses. A person with three tabs
-   open has three entries and every one of them rings. */
+/* Server-sent events. One map of userId -> open responses; a person with three
+   tabs open has three entries and every one of them rings. */
 
-const clients = new Map(); // userId -> Set<res>
+const clients = new Map();
 let heartbeat = null;
 const HEARTBEAT_MS = 25000;
 
@@ -15,7 +14,6 @@ function ensureHeartbeat() {
       }
     }
   }, HEARTBEAT_MS);
-  /* Never hold the process open for a heartbeat. */
   if (typeof heartbeat.unref === 'function') heartbeat.unref();
 }
 
@@ -54,21 +52,10 @@ export function publish(userId, event, data) {
   return delivered;
 }
 
-export function publishMany(userIds, event, data) {
-  let n = 0;
-  for (const id of new Set(userIds)) n += publish(id, event, data);
-  return n;
-}
-
 export function connectionCount(userId) {
   return userId ? (clients.get(userId)?.size || 0) : [...clients.values()].reduce((a, s) => a + s.size, 0);
 }
 
-export function isOnline(userId) {
-  return connectionCount(userId) > 0;
-}
-
-/* Tests and shutdown need the interval and sockets gone. */
 export function shutdownRealtime() {
   if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
   for (const [, set] of clients) {

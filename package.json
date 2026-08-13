@@ -1,7 +1,7 @@
 {
-  "name": "mutabi",
+  "name": "mutabea",
   "version": "1.0.0",
-  "description": "متابع — Mutabi': task follow-up console with email and in-app ringing notifications",
+  "description": "متابِع — نظام متابعة المهام والملاحظات للفروع",
   "type": "module",
   "main": "src/server.js",
   "scripts": {

@@ -1,41 +1,26 @@
-# متابع · Mutabi
+# متابِع · Mutabea
 
-A task **follow-up** console: work is raised, assigned, followed, chased and
-escalated — and everybody attached to a task is told what happened, in the
-browser and by email.
+نظام متابعة المهام والملاحظات للفروع — a mobile-first, Arabic, right-to-left
+console for following work across branches: notes are raised against a branch
+and a category, moved through a workflow with an approval gate, and everybody
+who should know is told — in the app, live, and by email.
 
-It is the متابعة / المتابعون idea from the Mihwar artifact built for real: the
-artifact modelled email delivery and had no server, so nothing actually left the
-page. Here the notification path is genuine — a real SMTP hand-off, a real
-live channel, a real background engine.
+This is the متابِع artifact built as a real application. The artifact kept
+everything in the browser's storage; here the data lives on a server, accounts
+are applied for and approved, and the notifications genuinely leave the process.
 
-- **Arabic-first, bilingual.** Full RTL, with English as a peer. Every task, name
-  and status carries both languages, and each message is rendered in the
-  *reader's* language, not the sender's.
-- **Notifications that reach people.** A bell with a live badge, an audible ring,
-  a toast, an optional desktop popup, and transactional email — all raised from
-  one choke point so a preference cannot be honoured on one surface and ignored
-  on another.
-- **A background engine.** Reminders, overdue detection and escalation to the
-  line manager, each idempotent so a restart cannot double-notify.
-
----
-
-## Two builds
-
-| | Artifact build | Server build |
-| --- | --- | --- |
-| Where it runs | claude.ai, no install — `artifact/mutabi.html` | your own host — `src/`, `public/` |
-| Data | this browser only (localStorage), with backup and restore | SQLite, shared by everyone |
-| People | one person plus a roster they manage | real accounts, sign-in, four roles |
-| Ring, bell, toasts | yes | yes |
-| Live updates between people | no — one browser | yes, over SSE |
-| Email | composed in full and collected in the Outbox to copy or save | sent automatically over SMTP |
-
-A published page cannot open an SMTP connection or hold shared server state, so
-the artifact build prepares each message in full rather than pretending to
-deliver it. Everything else — the follower model, the notification rules, quiet
-hours, the reminder and escalation engine — behaves the same in both.
+- **Registration with an approval gate.** Anyone can apply. Nobody gets in until
+  an administrator approves them — and the approval is where their branch,
+  their role and their exact permissions are decided.
+- **Notifications on both surfaces.** A live badge, an audible chime and a toast
+  over Server-Sent Events, plus transactional email — both raised from a single
+  choke point, so a preference cannot be honoured in the app and ignored in the
+  mail.
+- **Row-level scope, enforced on the server.** A branch account cannot read,
+  edit or delete anything outside its branch, and a record it cannot reach
+  answers 404 rather than 403 — existence itself is not disclosed.
+- **A configurable workflow.** Statuses, priorities, types and categories are
+  data. A status may be a *gate*: passing it requires the approval permission.
 
 ---
 
@@ -43,177 +28,121 @@ hours, the reminder and escalation engine — behaves the same in both.
 
 ```bash
 npm install
-npm run seed        # creates the demo organisation
-npm start           # http://localhost:3000
+cp .env.example .env      # optional; the defaults work for a local run
+npm start                 # http://localhost:3000
 ```
 
-Sign in with any seeded account — the password is `Mutabi#2026`:
+On an empty database the server creates the first administrator and prints where
+it is listening. Sign in, then change the password from **المزيد → كلمة المرور**.
 
-| Account | Role | Sees |
-| --- | --- | --- |
-| `admin@mutabi.local` | Administrator | everything, plus the email log and user management |
-| `layla@mutabi.local` | Manager | her department, her team and her direct reports |
-| `khalid@mutabi.local` | Manager | engineering |
-| `sara@mutabi.local` | Member | her own work and her team's |
-| `huda@mutabi.local` | Member | compliance work |
-| `faris@mutabi.local` | Viewer | reads, never writes |
+| | |
+|---|---|
+| username | `manager` |
+| password | `Manager@2026` |
+
+Set `SEED_DEMO=false` before the first boot for an empty database with no demo
+branches.
 
 ```bash
-npm test            # 94 tests: API, permissions, notifications, mail, scheduler, live channel
-npm run dev         # watch mode
-npm run reset       # drop the database and reseed
+npm run dev      # the same, with a watcher
+npm test         # 47 tests: the API, the approval gate, notifications, mail
+npm run reset    # drop the database and seed it again
 ```
 
----
-
-## The two things you asked for
-
-### 1. Email notifications
-
-Out of the box `MAIL_TRANSPORT=json`: every message is fully rendered — subject,
-plain text, bilingual HTML, the deep link back to the task — and written to the
-email log with a delivery state, but nothing leaves the process. That makes the
-whole path testable without a mail server.
-
-To send for real, put a server in `.env`:
+There is also an end-to-end pass through a real browser — apply, be refused, be
+approved, sign in, raise a note, watch the administrator's badge advance. It
+needs Playwright, which is deliberately not a dependency:
 
 ```bash
-MAIL_TRANSPORT=smtp
-SMTP_HOST=smtp.your-provider.com
-SMTP_PORT=587
-SMTP_USER=apikey
-SMTP_PASS=•••
-MAIL_FROM=Mutabi <no-reply@your-domain.com>
-APP_URL=https://mutabi.your-domain.com
+npm install --no-save playwright && npx playwright install chromium
+PORT=4173 npm start &
+node test/browser/pass.mjs
 ```
 
-Nothing else changes. **Administration → Email log** shows every message with its
-state (`queued` · `sent` · `failed` · `suppressed`), the failure reason when
-there is one, and a **Verify connection** button that tests SMTP without sending.
-
-Delivery is queue-then-send, not send-inline: a message is written to the log
-first, so a mail server that is down delays a notification instead of losing it,
-or failing the action that raised it. Failures retry up to `MAIL_MAX_ATTEMPTS`
-and then rest in the log as `failed` — visible, never silent.
-
-On staging, set `MAIL_REDIRECT_ALL=you@example.com` and every recipient is
-rewritten, so a copy of production data cannot mail real people.
-
-### 2. Ringing on the website
-
-The browser holds an open [SSE](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events)
-connection to `/api/stream`. When a notification is raised for you, five things
-happen at once:
-
-| Surface | Behaviour |
-| --- | --- |
-| **Badge** | the bell count updates immediately, and the tab title becomes `(3) متابع` |
-| **Ring** | a chime, synthesised with the Web Audio API — no asset to load, and the tone changes with severity: two rising notes normally, three insistent ones for overdue and escalations, one soft note for routine updates |
-| **Shake** | the bell icon rings visually, which is the whole cue for anyone who muted the sound |
-| **Toast** | a card slides in, colour-coded by severity, and clicking it opens the task |
-| **Desktop** | an OS notification, if the person granted permission |
-
-Browsers refuse to play audio until the person has interacted with the page, so
-the audio context is unlocked on the sign-in click and on any later gesture. If
-it is still blocked, the notification arrives silently rather than throwing —
-**Settings → In-app notifications → Enable sound** plays a test chime on demand.
-
-**Settings → Send a test notification** puts a real notification through the real
-path — bell, ring, toast and email — so "is this actually wired up?" has a
-one-click answer. Being a diagnostic, it is treated as mandatory: it ignores
-quiet hours and a muted email setting, so it always demonstrates the full path.
+Node 20.11 or newer. The only runtime dependencies are Express, better-sqlite3,
+bcryptjs, jsonwebtoken, cookie-parser and nodemailer.
 
 ---
 
-## How a notification is decided
+## How an account comes to exist
 
-Every notification in the system goes through one function, `notify()` in
-`src/services/notify.js`. Nothing else writes to the notifications table and
-nothing else queues mail — which is what makes a preference honest, because
-there is exactly one place where it can be consulted.
+1. Somebody opens the sign-in card and chooses **أنشئ طلب حساب**. They give a
+   name, a username, an email address, a password and — optionally — the branch
+   they belong to and a note for the administrator.
+2. The application is stored with `status = 'pending'`. It can do nothing: the
+   session middleware attaches a user only when the status is `active`, so even
+   a forged token is inert. Signing in returns `403 account_pending`.
+3. Every administrator gets a notification and an email. The count also appears
+   as a badge on **المزيد**.
+4. The administrator opens **الإعدادات والإدارة → طلبات التسجيل** and either
+   approves — choosing the branch, the preset and any individual permission — or
+   rejects with a reason.
+5. The applicant is emailed the decision at the address they applied with. On
+   approval they can sign in; on rejection the sign-in says so, with the reason.
 
-```
-notify({ userId, kind, taskId, actorId, text, textAr })
-  │
-  ├─ the actor is not told about their own action
-  │
-  ├─ in-app?  enabled AND this event is not muted
-  │             └─ record it, push it live, and ring
-  │                unless quiet hours are open (recorded, but silent)
-  │
-  └─ email?   mode is not "off", the event is not muted,
-              and — in "critical only" mode — the task is Critical
-                └─ queue it, held until quiet hours close
-                otherwise: log it as suppressed, with the reason
-```
+Registration answers `202` with the same body whether or not the address is
+already known, so the form cannot be used to enumerate accounts.
 
-**Escalations and approvals ignore all of it.** They ring inside quiet hours and
-they email even when email is switched off, because the point of an escalation
-is that somebody stopped reading their notifications.
-
-Quiet hours **hold** email rather than dropping it: the message waits in the
-queue with a release time and goes out when the window closes.
-
-### Who gets told
-
-The audience of a task is its assignee, its accountable owner, its participants
-and its **المتابعون — followers**. Following is the core gesture: it lets somebody
-track work they are not doing without being made responsible for it, and it is
-what a "follow-up console" is for. Creating a task follows it; being assigned one
-follows it; being mentioned in a comment follows it.
-
-| Event | Kind | Who |
-| --- | --- | --- |
-| Assigned to you | `assign` | the new assignee |
-| Taken off you | `reassign` | the previous assignee |
-| Status moved | `status` / `complete` | everybody following |
-| Deadline moved | `due` | everybody following |
-| Comment | `comment` | everybody following |
-| `@mentioned` | `mention` | the mentioned person (outranks the comment sweep) |
-| Added as a follower | `watch` | the person added — choosing to follow yourself is silent |
-| Reminder fires | `reminder` | the target, or everybody following |
-| Deadline passed | `overdue` | everybody following, once |
-| Still overdue | `escalation` | the assignee's line manager, once |
+Two switches govern the door: `REGISTRATION_OPEN` closes self-service
+entirely, and `ALLOWED_EMAIL_DOMAINS` limits who may apply. Neither removes the
+approval step.
 
 ---
 
-## The background engine
+## Notifications
 
-A tick every `TICK_SECONDS` (default 60), also runnable on demand from
-**Email log → Run engine**:
+Everything goes through `raise()` in `src/services/notify.js` — the single place
+that writes a notification row or queues a message. Nothing else in the codebase
+may write to `notifications` or `emails`.
 
-1. **Reminders** — fires anything due. An automatic reminder mirrors the due date
-   (`REMINDER_LEAD_DAYS` before it) and is regenerated whenever the deadline
-   moves, so a rescheduled task never leaves a stale alarm behind.
-2. **Overdue** — announces tasks that have just passed their deadline and flags
-   them, so a task goes overdue *once*, not once per minute.
-3. **Escalation** — after `ESCALATION_DAYS` overdue, escalates to the assignee's
-   manager, falling back to the owner's manager and then to an administrator, so
-   an escalation never lands nowhere.
-4. **Mail** — hands the queue to the transport and records what happened.
+For each event it:
 
-Rescheduling a task clears its overdue and escalation stamps, so it can announce
-itself again on the new date.
+1. checks the master switch and the per-event switch,
+2. writes an in-app notification for every person in the audience,
+3. pushes it down their open Server-Sent Events channels — badge and all,
+4. queues an email for the configured recipients, plus any address the caller
+   adds (an applicant's own address, for instance, which has no account yet).
+
+The person who caused the event is not told about their own action unless the
+caller passes `force` — an approval decision is sent to the applicant regardless.
+
+**In the browser.** One `EventSource` per tab, authenticated by the session
+token, reconnecting with exponential backoff. An arriving notification bumps the
+badge, animates the bell, plays a two-note chime — three insistent notes when the
+event is urgent — and shows a toast. The chime is synthesised with the Web Audio
+API, needs no asset, and is muted per-device from **المزيد**. Browsers require a
+gesture before audio may play; the first tap on the bell or the add button
+unlocks it.
+
+**By email.** Messages are queued to the database first and sent by the
+background engine, with retries and a per-message attempt count. The full log —
+sent, queued, failed and suppressed — is readable at **الإعدادات → سجل البريد**,
+so a message that never arrived can be told apart from one that was never
+raised. `MAIL_TRANSPORT=json` renders and logs without sending, which is the
+default and what the tests use.
+
+Events: a note added, edited, moved, awaiting approval, approved or closed, due
+soon, overdue, a comment, a photograph, a document, a new application, an
+approved account. Each can be switched off individually.
 
 ---
 
-## Access
+## Permissions
 
-Four roles across twenty-four permissions (`src/lib/permissions.js`), transcribed
-from the artifact's matrix. Two questions are kept apart:
+Three presets — manager, branch, read-only — are a starting point, not a
+straitjacket. Any account can be given any combination of fourteen permissions
+and four visible tabs, and every one of them is checked on the server:
 
-- `can(user, permission)` — what may this *kind* of person do at all?
-- `taskAccess(user, task)` — which rows *exist* for them, and may they change
-  this one? Returns `none` · `view` · `edit`.
+`create · edit · changeStatus · approve · del · comment · photos · uploadDocs ·
+deleteDocs · manageEntities · manageTeam · manageUsers · settings · export`
 
-Every read and every write goes through `taskAccess()`, so a surface cannot
-invent its own rule. A record out of reach answers **404, not 403** — its
-existence is itself privileged. Personal attachment always wins: work you are
-assigned, own, created or follow stays reachable however narrow your role.
+`scope` is the important one. `all` reaches every branch; `own` exists only
+inside the account's own branch, and that filter is applied in the query, not in
+the interface. A stored permission set overrides the role for the keys it names;
+an unreadable one falls back to the branch preset rather than escalating.
 
-**Overdue and due-soon are never stored.** They are derived on read from the
-deadline and the closure state, so a task cannot be simultaneously "Completed"
-and "Overdue", and no batch job is needed to keep a flag honest.
+The system refuses to be left without an administrator: the last account that
+can manage users cannot be demoted, disabled or deleted.
 
 ---
 
@@ -221,98 +150,68 @@ and "Overdue", and no batch job is needed to keep a flag honest.
 
 ```
 src/
-  config.js              environment and defaults
-  app.js  server.js      express wiring, boot, graceful shutdown
-  db/       schema.sql · connection · seed
-  lib/      auth · permissions · prefs · time · ids
+  app.js          the Express application
+  server.js       boot: seed the owner, start the scheduler, listen
+  config.js       environment and defaults
+  db/             schema.sql, the connection, the seed
+  lib/
+    domain.js     presets, permissions, workflow defaults, event catalogue
+    auth.js       hashing, tokens, the middleware that gates on status
+  routes/
+    auth.js       register · login · logout · me · password
+    api.js        bootstrap · issues · entities · library · notifications · export
+    admin.js      registrations · users · variables · team · mail · engine · audit
+    stream.js     the Server-Sent Events channel
   services/
-    notify.js            THE choke point — every notification passes here
-    realtime.js          the SSE hub
-    mailer.js            queue, transport, retry, log
-    templates.js         bilingual subject/text/HTML
-    scheduler.js         reminders · overdue · escalation · mail flush
-    tasks.js             task rules, followers, comments, checklist
-    audit.js             append-only history
-  routes/   auth · tasks · notifications · stream · meta · admin
+    notify.js     raise() — the one place notifications come from
+    mailer.js     transport, the RTL template, the queue and the log
+    issues.js     the domain: scope, the gate, recurrence, sub-resources
+    scheduler.js  due-soon, overdue, mail flush
+    realtime.js   who is connected, and writing to them
 public/
-  index.html  app.css
-  js/  app.js · views.js · notifications.js · ring.js · live.js · api.js · i18n.js · dom.js
-test/       94 tests
+  index.html      the shell
+  app.css         a generated Tailwind subset — no CDN, no build step at runtime
+  js/
+    core.js       formatting, the API client, the chime, the live channel
+    ui.js         the element helper, the icon set, the charts
+    state.js      the snapshot and how it refreshes
+    auth-views.js sign in and apply
+    views.js      dashboard, tasks, branches
+    views2.js     the record, the form, library, reports, alerts, more
+    admin-views.js registrations, users, branches, variables, team, mail
+    app.js        the router, the boot sequence, the live wiring
+test/             47 tests over the running server, plus an optional
+                  browser pass through the whole journey (test/browser)
+artifact/         the published artifact this application was built from
 ```
 
-No build step and no front-end framework: the browser loads ES modules directly.
-The UI is built through one `el()` helper that only ever sets `textContent`, so
-task titles and comments cannot become markup.
-
-### API
-
-| | |
-| --- | --- |
-| `POST /api/auth/login` · `/logout` · `GET /me` | session |
-| `PUT /api/auth/me/prefs` · `/profile` · `POST /me/password` | own account |
-| `GET/POST /api/tasks` · `GET/PATCH/DELETE /api/tasks/:id` | tasks |
-| `GET/POST /api/tasks/:id/watchers` · `DELETE .../:user` | المتابعون |
-| `POST /api/tasks/:id/comments` · `/checklist` · `/reminders` | task detail |
-| `GET /api/tasks/:id/history` | audit trail |
-| `GET /api/notifications` · `/count` · `POST /read` · `/read-all` · `/test` | notifications |
-| `GET /api/stream` | the live channel (SSE) |
-| `GET /api/admin/emails` · `/mail/verify` · `POST /mail/flush` · `/tick` | operations |
-| `GET /api/admin/users` · `POST` · `PATCH /:id` | people |
+There is no front-end build step and no runtime CDN: the stylesheet is a
+generated subset of Tailwind, the icons are inline SVG, and the charts are drawn
+by hand. The page is stamped `dir="rtl"` before first paint.
 
 ---
 
 ## Deploying
 
-1. Set `JWT_SECRET`, `NODE_ENV=production`, `APP_URL`, and the SMTP block.
-2. Put a TLS terminator in front and leave `SECURE_COOKIES=true` — and disable
-   response buffering for `/api/stream`, or the live channel will stall
-   (`proxy_buffering off;` in nginx; the app already sends `X-Accel-Buffering: no`).
-3. Run one process. The SSE hub and the scheduler are in-process, so a multi-node
-   deployment needs a shared bus (Redis pub/sub) and a single scheduler owner
-   before it will behave.
-4. `data/` holds the SQLite database in WAL mode — back it up, or move the
-   storage adapter to Postgres, which is the only layer that has to change.
+The database is a single SQLite file — put it on a persistent volume and back up
+that one path. For anything public:
 
----
-
-## متابِع (Mutabea) — the branch operations build
-
-`artifact/mutabea.html` is a separate application from the follow-up console
-above: the delivered React/Tailwind `mutabea.tsx` component, rebuilt as one
-self-contained page so it runs on claude.ai with nothing to install.
-
-Everything in the source is present: the four bottom tabs, the dashboard with
-its charts, the task list and kanban board, entities and their per-branch
-categories, the issue record (workflow with approval gates, park/resume,
-checklist, before/after photos, comments, activity log), the add/edit form with
-recurrence and tags, the document library, the reports screen with CSV export,
-and the whole administration area — users with granular permissions, branches
-and categories, the configurable variables (priorities, statuses, types,
-default categories), the team, notification settings and the EmailJS setup.
-
-Three dependencies could not be fetched from a published page and were rebuilt
-rather than dropped:
-
-| Dependency | Replacement |
-| --- | --- |
-| Tailwind CDN | the exact utility subset the component uses, generated by `artifact/build/gen-css.py` |
-| lucide-react | the same icons, inline SVG |
-| recharts | the same donut and bar charts, drawn as SVG |
-
-`window.storage` became `localStorage`, keeping the async shape.
-
-**Email.** Sending still goes through EmailJS exactly as the source does. Inside
-the published page the sandbox blocks outbound requests, so the message is
-recorded in **الإعدادات → سجل الرسائل** to copy or save; host the same file on
-your own domain and the identical call delivers for real.
-
-**Added at the client's request:** an in-app bell with an unread badge, a
-notification centre, and an audible chime — an emailed notification is no use to
-somebody already looking at the screen. Both are switchable under
-**الإعدادات → الإشعارات**.
-
-Rebuild after editing anything under `artifact/build/`:
-
-```bash
-sh artifact/build/build.sh
 ```
+NODE_ENV=production
+JWT_SECRET=<32+ random bytes>       # without it, sessions die on restart
+SECURE_COOKIES=true                 # terminate TLS in front of the process
+APP_URL=https://mutabea.example.com # the links inside every email
+SEED_DEMO=false
+OWNER_PASSWORD=<something else>
+SMTP_HOST=…  SMTP_USER=…  SMTP_PASS=…
+```
+
+Behind a reverse proxy, the live channel needs buffering off — the server sends
+`X-Accel-Buffering: no`, which nginx honours; for anything else, disable
+response buffering on `/api/stream` and allow long-lived connections.
+
+`MAIL_REDIRECT_ALL` rewrites every recipient to one address: set it on any
+staging copy of production data so it cannot mail real people.
+
+`GET /api/health` reports the environment, the mail transport, whether
+registration is open and whether the engine is running.
