@@ -1,0 +1,26 @@
+
+/* ---- application chrome ------------------------------------------------- */
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:'Segoe UI','Helvetica Neue',Tahoma,'Geeza Pro','Noto Naskh Arabic',Arial,sans-serif;
+  background:#e2e8f0;color:#0f172a;
+}
+*{-webkit-tap-highlight-color:transparent}
+.ns::-webkit-scrollbar{display:none}
+.ns{-ms-overflow-style:none;scrollbar-width:none}
+@keyframes sU{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sUp{animation:sU .25s ease}
+.lc2{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{
+  outline:2px solid #0284c7;outline-offset:2px
+}
+/* The bell shakes as well as chimes, so a muted device still shows the alert. */
+@keyframes bellRing{
+  0%,100%{transform:rotate(0)}10%{transform:rotate(16deg)}20%{transform:rotate(-14deg)}
+  30%{transform:rotate(11deg)}40%{transform:rotate(-9deg)}50%{transform:rotate(6deg)}
+  60%{transform:rotate(-4deg)}70%{transform:rotate(2deg)}
+}
+#bellBtn.ringing svg{animation:bellRing .9s ease-in-out;transform-origin:50% 15%}
+@media (prefers-reduced-motion:reduce){.sUp,#bellBtn.ringing svg{animation:none}}
+input[type="date"],input[type="datetime-local"]{min-height:2.6rem}
+pre{margin:0}
