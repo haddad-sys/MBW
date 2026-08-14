@@ -749,6 +749,187 @@
     ]);
   }
 
+  /* ── the trail ────────────────────────────────── */
+  /* Every entry, said as a sentence. The verbs are past tense because the
+     trail is a record of what happened, not a list of capabilities. */
+  var ACTIONS = {
+    'auth.login':           { text: 'سجّل الدخول',            icon: 'lock',     tone: 'slate' },
+    'auth.logout':          { text: 'سجّل الخروج',            icon: 'logout',   tone: 'slate' },
+    'auth.password_change': { text: 'غيّر كلمة المرور',        icon: 'lock',     tone: 'amber' },
+    'user.register':        { text: 'قدّم طلب تسجيل',          icon: 'send',     tone: 'sky' },
+    'user.approve':         { text: 'اعتمد حساباً',            icon: 'check',    tone: 'emerald' },
+    'user.reject':          { text: 'رفض طلب تسجيل',           icon: 'x',        tone: 'rose' },
+    'user.create':          { text: 'أنشأ حساباً',             icon: 'user',     tone: 'sky' },
+    'user.update':          { text: 'عدّل حساباً',             icon: 'edit',     tone: 'amber' },
+    'user.delete':          { text: 'حذف حساباً',              icon: 'trash',    tone: 'rose' },
+    'entity.create':        { text: 'أضاف فرعاً',              icon: 'building', tone: 'violet' },
+    'entity.update':        { text: 'عدّل فرعاً',              icon: 'edit',     tone: 'amber' },
+    'entity.delete':        { text: 'حذف فرعاً',               icon: 'trash',    tone: 'rose' },
+    'issue.create':         { text: 'أنشأ ملاحظة',             icon: 'plus',     tone: 'sky' },
+    'issue.update':         { text: 'عدّل ملاحظة',             icon: 'edit',     tone: 'amber' },
+    'issue.status':         { text: 'غيّر حالة ملاحظة',        icon: 'refresh',  tone: 'emerald' },
+    'issue.delete':         { text: 'حذف ملاحظة',              icon: 'trash',    tone: 'rose' },
+    'issue.overdue':        { text: 'رصد تأخّر ملاحظة',        icon: 'alert',    tone: 'rose' },
+    'config.update':        { text: 'عدّل المتغيّرات',          icon: 'grid',     tone: 'amber' },
+    'notif.update':         { text: 'عدّل إعدادات الإشعارات',  icon: 'bell',     tone: 'amber' }
+  };
+  var FAMILIES = [
+    { k: '', l: 'الكل' },
+    { k: 'user', l: 'الحسابات' },
+    { k: 'auth', l: 'الدخول' },
+    { k: 'issue', l: 'الملاحظات' },
+    { k: 'entity', l: 'الفروع' },
+    { k: 'config', l: 'الإعدادات' }
+  ];
+
+  function AuditPanel(backFn) {
+    var st = sub('audit', { rows: null, more: false, total: 0, family: '', q: '', loading: false, loaded: false });
+    var box = h('div', { class: 'space-y-2' });
+    var chipRow = h('div', { class: 'flex gap-1.5 overflow-x-auto ns pb-1' });
+    var intro = h('p', { class: 'text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl p-3 leading-relaxed' });
+
+    /* The count only exists once the first page has come back. */
+    function drawIntro() {
+      intro.textContent = st.total
+        ? ('كل دخول واعتماد وتغيير صلاحية أو إعداد، مرتّبة من الأحدث. ' + toAr(st.total) + ' حركة مسجّلة — السجل لا يُعدَّل ولا يُحذف منه.')
+        : 'كل دخول واعتماد وتغيير صلاحية أو إعداد يُسجَّل هنا. السجل لا يُعدَّل ولا يُحذف منه.';
+    }
+    drawIntro();
+
+    function drawChips() {
+      mount(chipRow, FAMILIES.map(function (f) {
+        var on = st.family === f.k;
+        return h('button', {
+          class: 'px-3 py-1.5 rounded-xl text-xs flex-shrink-0 ' +
+            (on ? 'bg-sky-500 text-white font-semibold' : 'bg-white border border-slate-200 text-slate-600'),
+          onclick: function () { if (st.family === f.k) return; st.family = f.k; drawChips(); load(false); }
+        }, f.l);
+      }));
+    }
+    drawChips();
+
+    function query(last) {
+      var p = ['limit=60'];
+      if (st.family) p.push('family=' + encodeURIComponent(st.family));
+      if (st.q) p.push('q=' + encodeURIComponent(st.q));
+      /* Both halves of the cursor — the timestamp alone would skip every entry
+         sharing the boundary millisecond. */
+      if (last) p.push('before=' + last.at, 'beforeId=' + encodeURIComponent(last.id));
+      return '/api/admin/audit?' + p.join('&');
+    }
+    function load(append) {
+      st.loading = true;
+      if (!append) mount(box, h('div', { class: 'text-center text-slate-400 py-8 text-sm' }, 'جارٍ التحميل…'));
+      var last = append && st.rows && st.rows.length ? st.rows[st.rows.length - 1] : null;
+      api.get(query(last)).then(function (res) {
+        st.rows = append && st.rows ? st.rows.concat(res.audit || []) : (res.audit || []);
+        st.more = !!res.more;
+        st.total = res.total || 0;
+        st.loading = false;
+        st.loaded = true;
+        settle();
+      }).catch(function (err) { st.loading = false; st.loaded = true; st.rows = []; settle(); fail(err); });
+    }
+    /* If the panel this closure built is still on screen, redraw just the list:
+       a full render would rebuild the search box and take the caret with it.
+       If it has been replaced — by a live notification, say — the captured node
+       is detached and only a full render puts the result anywhere visible. */
+    function settle() {
+      if (box.isConnected) { drawIntro(); drawChips(); draw(); }
+      else render();
+    }
+
+    /* The status key an entry records is only meaningful next to its label. */
+    function statusLabel(key) {
+      var s = C().S[key];
+      return s ? s.label : key;
+    }
+    function describe(r) {
+      if (r.action === 'issue.status' && r.detail) return 'إلى «' + statusLabel(r.detail) + '»';
+      return r.detail || '';
+    }
+    function dayOf(ts) {
+      var d = new Date(ts); d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    }
+    function dayLabel(ts) {
+      var today = dayOf(Date.now()), day = dayOf(ts);
+      if (day === today) return 'اليوم';
+      if (day === today - 86400000) return 'أمس';
+      return fmtDate(ts);
+    }
+
+    function draw() {
+      if (!st.rows) { mount(box, h('div', { class: 'text-center text-slate-400 py-8 text-sm' }, 'جارٍ التحميل…')); return; }
+      if (!st.rows.length) {
+        mount(box, h('div', { class: 'text-center py-12' }, [
+          ic('list', 34, 'text-slate-200'),
+          h('div', { class: 'text-sm text-slate-300 mt-3' },
+            st.q || st.family ? 'لا نتائج لهذا البحث' : 'لا توجد حركة مسجّلة بعد')
+        ]));
+        return;
+      }
+
+      var nodes = [];
+      var lastDay = null;
+      st.rows.forEach(function (r) {
+        var day = dayOf(r.at);
+        if (day !== lastDay) {
+          lastDay = day;
+          nodes.push(h('div', { class: 'text-xs font-semibold text-slate-400 pt-3 pb-1' }, dayLabel(r.at)));
+        }
+        var a = ACTIONS[r.action] || { text: r.action, icon: 'info', tone: 'slate' };
+        var pal = M.pal(a.tone);
+        var detail = describe(r);
+        nodes.push(h('div', { class: 'bg-white rounded-2xl border border-slate-200 p-3 flex items-start gap-3' }, [
+          h('div', { class: 'w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ' + pal.tint }, [ic(a.icon, 16)]),
+          h('div', { class: 'flex-1 min-w-0' }, [
+            h('div', { class: 'text-sm text-slate-800' }, [
+              h('span', { class: 'font-semibold' }, r.user_name || 'النظام'),
+              ' ' + a.text
+            ]),
+            detail ? h('div', { class: 'text-xs text-slate-500 mt-0.5 break-words' }, detail) : null
+          ]),
+          h('span', { class: 'text-xs text-slate-300 flex-shrink-0' }, fmtWhen(r.at))
+        ]));
+      });
+
+      if (st.more) {
+        nodes.push(h('button', {
+          class: 'w-full mt-2 py-3 rounded-xl bg-white border border-slate-200 text-sm text-slate-600',
+          disabled: st.loading,
+          onclick: function () { load(true); }
+        }, st.loading ? 'جارٍ التحميل…' : 'عرض المزيد'));
+      } else if (st.rows.length > 20) {
+        nodes.push(h('div', { class: 'text-center text-xs text-slate-300 pt-3' }, 'نهاية السجل'));
+      }
+      mount(box, nodes);
+    }
+
+    if (!st.loaded && !st.loading) load(false); else draw();
+
+    var search = h('input', {
+      class: INP, value: st.q, placeholder: 'ابحث في التفاصيل أو الأسماء…', type: 'search'
+    });
+    var searchTimer = null;
+    search.addEventListener('input', function () {
+      st.q = search.value;
+      clearTimeout(searchTimer);
+      /* Typing must not re-render — that would take the caret with it. */
+      searchTimer = setTimeout(function () { load(false); }, 350);
+    });
+
+    return h('div', {}, [
+      TopBar({ title: 'سجل الحركة', onBack: backFn }),
+      h('div', { class: 'p-4 space-y-3' }, [
+        intro,
+        search,
+        chipRow,
+        box
+      ])
+    ]);
+  }
+
   /* ── settings index ───────────────────────────── */
   function SettingsPage() {
     var st = local({ view: cur().param || 'index' });
@@ -772,6 +953,7 @@
     if (st.view === 'team') return TeamPanel(backToIndex);
     if (st.view === 'notif') return NotifPanel(backToIndex);
     if (st.view === 'mail') return MailPanel(backToIndex);
+    if (st.view === 'audit') return AuditPanel(backToIndex);
 
     return h('div', {}, [
       TopBar({ title: 'الإعدادات والإدارة', onBack: back, label: S.user.label }),
@@ -782,7 +964,8 @@
         perms.settings ? Row('grid', 'المتغيّرات', 'الأولويات والحالات والأنواع — إضافة وحذف', function () { st.view = 'vars'; render(); }) : null,
         perms.manageTeam ? Row('user', 'الفريق', 'الأشخاص المتاحون للتكليف', function () { st.view = 'team'; render(); }) : null,
         perms.settings ? Row('bell', 'الإشعارات', 'تفعيل وتخصيص الإشعارات والمستلمين', function () { st.view = 'notif'; render(); }) : null,
-        perms.settings ? Row('mail', 'سجل البريد', 'كل رسالة أُرسلت أو في الانتظار', function () { st.view = 'mail'; render(); }) : null
+        perms.settings ? Row('mail', 'سجل البريد', 'كل رسالة أُرسلت أو في الانتظار', function () { st.view = 'mail'; render(); }) : null,
+        perms.settings ? Row('list', 'سجل الحركة', 'من فعل ماذا ومتى — دخول واعتمادات وتغييرات', function () { st.view = 'audit'; render(); }) : null
       ])
     ]);
   }

@@ -2,7 +2,7 @@
    variables that drive the workflow, the team, and the audit trail. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { admin, makeEntity, member, stop } from './helpers.js';
+import { admin, db, makeEntity, member, stop } from './helpers.js';
 
 test.after(stop);
 
@@ -273,5 +273,93 @@ test('the trail records who did what', async () => {
   for (const expected of ['auth.login', 'user.approve', 'entity.create', 'user.update']) {
     assert.ok(actions.includes(expected), `the trail records ${expected}`);
   }
+  assert.ok(res.body.total >= actions.length, 'and reports how many it holds');
+  assert.ok(res.body.audit.every((a) => 'user_name' in a), 'each entry names its actor');
   assert.equal((await world.branch.get('/api/admin/audit')).status, 403);
+});
+
+test('the trail is newest first and filters by family', async () => {
+  const all = await world.admin.get('/api/admin/audit');
+  const times = all.body.audit.map((a) => a.at);
+  assert.deepEqual(times, [...times].sort((a, b) => b - a), 'newest first');
+
+  const users = await world.admin.get('/api/admin/audit?family=user');
+  assert.ok(users.body.audit.length);
+  assert.ok(users.body.audit.every((a) => a.action.startsWith('user.')), 'only that family');
+
+  const entities = await world.admin.get('/api/admin/audit?family=entity');
+  assert.ok(entities.body.audit.every((a) => a.action.startsWith('entity.')));
+
+  /* An unknown family is ignored rather than returning nothing at all. */
+  const bogus = await world.admin.get('/api/admin/audit?family=nonsense');
+  assert.equal(bogus.body.audit.length, all.body.audit.length);
+});
+
+test('the trail is searchable', async () => {
+  const hit = await world.admin.get('/api/admin/audit?q=' + encodeURIComponent('فرع الجهراء'));
+  assert.ok(hit.body.audit.length >= 1, 'finds an entry by its detail');
+  assert.ok(hit.body.audit.some((a) => (a.detail || '').includes('فرع الجهراء')));
+
+  const byAction = await world.admin.get('/api/admin/audit?q=approve');
+  assert.ok(byAction.body.audit.every((a) => /approve/.test(a.action) || /approve/i.test(a.detail || '')));
+
+  const miss = await world.admin.get('/api/admin/audit?q=' + encodeURIComponent('لا شيء مطابق أبداً'));
+  assert.equal(miss.body.audit.length, 0);
+  assert.equal(miss.body.more, false);
+});
+
+test('the trail pages without repeating or skipping an entry', async () => {
+  const first = await world.admin.get('/api/admin/audit?limit=5');
+  assert.equal(first.body.audit.length, 5);
+  assert.equal(first.body.more, true, 'it says there is more to come');
+
+  const last = first.body.audit[first.body.audit.length - 1];
+  const second = await world.admin.get(`/api/admin/audit?limit=5&before=${last.at}&beforeId=${last.id}`);
+  assert.ok(second.body.audit.length);
+
+  const firstIds = new Set(first.body.audit.map((a) => a.id));
+  assert.ok(second.body.audit.every((a) => !firstIds.has(a.id)), 'no entry appears twice');
+  assert.ok(second.body.audit.every((a) => a.at <= last.at), 'and the page follows the cursor');
+
+  /* Walking to the end must terminate and cover everything. */
+  const seen = new Set();
+  let cursor = null;
+  for (let guard = 0; guard < 60; guard += 1) {
+    const page = await world.admin.get(
+      `/api/admin/audit?limit=10${cursor ? `&before=${cursor.at}&beforeId=${cursor.id}` : ''}`,
+    );
+    page.body.audit.forEach((a) => seen.add(a.id));
+    if (!page.body.more || !page.body.audit.length) break;
+    cursor = page.body.audit[page.body.audit.length - 1];
+  }
+  assert.equal(seen.size, first.body.total, 'every entry was reached exactly once');
+});
+
+test('paging survives entries sharing one millisecond', async () => {
+  /* Not hypothetical: approving an account writes several entries inside the
+     same millisecond, and a timestamp-only cursor steps over all but one. */
+  const at = Date.now() - 5 * 86400000;
+  const stamp = db.prepare('INSERT INTO audit (id, at, user_id, action, target, detail) VALUES (?, ?, NULL, ?, NULL, ?)');
+  for (let i = 0; i < 12; i += 1) stamp.run(`a_tie_${i}`, at, 'issue.create', `tied entry ${i}`);
+
+  const seen = new Set();
+  let cursor = null;
+  for (let guard = 0; guard < 60; guard += 1) {
+    const page = await world.admin.get(
+      `/api/admin/audit?limit=5&q=tied%20entry${cursor ? `&before=${cursor.at}&beforeId=${cursor.id}` : ''}`,
+    );
+    page.body.audit.forEach((a) => seen.add(a.id));
+    if (!page.body.more || !page.body.audit.length) break;
+    const next = page.body.audit[page.body.audit.length - 1];
+    if (cursor && next.id === cursor.id) break;   /* would-be infinite loop */
+    cursor = next;
+  }
+  assert.equal(seen.size, 12, 'every tied entry is reachable');
+});
+
+test('the trail is append-only through the API', async () => {
+  for (const [method, path] of [['del', '/api/admin/audit'], ['post', '/api/admin/audit'], ['patch', '/api/admin/audit']]) {
+    const res = await world.admin[method](path);
+    assert.ok(res.status === 404 || res.status === 405, `${method} ${path} → ${res.status}`);
+  }
 });

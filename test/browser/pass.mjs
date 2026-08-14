@@ -206,6 +206,33 @@ await admin.waitForTimeout(1000);
 const afterVars = await admin.evaluate(() => window.ST.S.cfg.priorities.length);
 ok('a priority was added and saved', afterVars === beforeVars + 1, `${beforeVars} → ${afterVars}`);
 
+console.log('\n— the activity trail —');
+await admin.locator('button[aria-label="رجوع"]').first().click();
+await admin.waitForTimeout(400);
+await admin.getByText('سجل الحركة', { exact: true }).first().click();
+await admin.waitForTimeout(900);
+const trail = await seen(admin);
+ok('the trail lists entries', /سجّل الدخول|اعتمد حساباً|أضاف فرعاً/.test(trail), trail.slice(0, 160));
+ok('entries are said as sentences, not codes', !/auth\.login|user\.approve/.test(trail));
+ok('it is grouped by day', /اليوم|أمس/.test(trail));
+
+await admin.getByText('الحسابات', { exact: true }).first().click();
+await admin.waitForTimeout(900);
+const filtered = await seen(admin);
+ok('the family filter narrows it', /اعتمد حساباً|قدّم طلب تسجيل/.test(filtered) && !/سجّل الدخول/.test(filtered),
+  filtered.slice(0, 160));
+
+await admin.getByText('الكل', { exact: true }).first().click();
+await admin.waitForTimeout(800);
+await admin.locator('input[type="search"]').fill('سارة');
+await admin.waitForTimeout(1100);
+const searched = await seen(admin);
+ok('search finds the applicant', searched.includes('سارة') || searched.includes('لا نتائج'), searched.slice(0, 160));
+ok('the search box keeps focus while typing',
+  await admin.evaluate(() => document.activeElement && document.activeElement.type === 'search'));
+await admin.locator('input[type="search"]').fill('');
+await admin.waitForTimeout(1100);
+
 console.log('\n— the mute preference sticks —');
 await admin.evaluate(() => window.MUT.Ring.setMuted(true));
 ok('mute is remembered', await admin.evaluate(() => localStorage.getItem('mutabea.mute') === '1'));

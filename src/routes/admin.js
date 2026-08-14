@@ -8,7 +8,7 @@ import {
 import { raise, notifSettings, adminAudience } from '../services/notify.js';
 import { emailLog, verifyTransport, transportName, flushEmails, renderEmail, queueEmail } from '../services/mailer.js';
 import { runTick } from '../services/scheduler.js';
-import { audit, auditLog } from '../services/audit.js';
+import { audit, auditLog, auditCount, AUDIT_FAMILIES } from '../services/audit.js';
 
 const router = express.Router();
 router.use(requireAuth);
@@ -314,7 +314,14 @@ router.post('/tick', requirePerm('settings'), wrap(async (req, res) => {
 }));
 
 router.get('/audit', requirePerm('settings'), (req, res) => {
-  res.json({ audit: auditLog(req.query.limit) });
+  const { entries, more } = auditLog({
+    limit: req.query.limit,
+    family: clean(req.query.family) || null,
+    q: clean(req.query.q),
+    before: req.query.before,
+    beforeId: clean(req.query.beforeId) || null,
+  });
+  res.json({ audit: entries, more, total: auditCount(), families: AUDIT_FAMILIES });
 });
 
 export default router;

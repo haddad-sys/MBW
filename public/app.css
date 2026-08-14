@@ -1649,6 +1649,7 @@ ul,ol{margin:0;padding:0}
 .leading-tight{line-height:1.25}.leading-snug{line-height:1.375}
 .whitespace-pre-wrap{white-space:pre-wrap}.whitespace-nowrap{white-space:nowrap}
 .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.break-words{overflow-wrap:break-word}
 .line-through{text-decoration-line:line-through}
 .uppercase{text-transform:uppercase}
 .block{display:block}.inline{display:inline}.inline-block{display:inline-block}

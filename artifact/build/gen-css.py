@@ -120,6 +120,7 @@ add('.text-right{text-align:right}.text-center{text-align:center}.text-left{text
 add('.leading-tight{line-height:1.25}.leading-snug{line-height:1.375}')
 add('.whitespace-pre-wrap{white-space:pre-wrap}.whitespace-nowrap{white-space:nowrap}')
 add('.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}')
+add('.break-words{overflow-wrap:break-word}')
 add('.line-through{text-decoration-line:line-through}')
 add('.uppercase{text-transform:uppercase}')
 
