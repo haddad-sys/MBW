@@ -528,11 +528,18 @@ error it records.
 | Is the server alive and how is it configured? | `GET /api/health` |
 | What did it print? | `journalctl -u mutabea -f`, or `docker compose logs -f` |
 | Did that email go? | الإعدادات → سجل البريد |
+| Who did what, and when? | الإعدادات → سجل الحركة |
 | Is the live channel connected? | `window.ST.S.live` in the browser console |
 
-**Who did what.** Every sign-in, approval, rejection, account change and
-configuration change is recorded, but there is no screen for it yet — the trail
-is readable over the API only:
+**The activity trail.** Every sign-in, approval, rejection, account change and
+configuration change is recorded, and <span dir="rtl">سجل الحركة</span> shows it
+grouped by day, filtered by family, and searchable by name or detail. It is
+append-only: nothing in the application updates or deletes an entry, and there
+is no route that would.
+
+It is on the API too, if you want to pull it into something else. Paging is by
+cursor — pass back the `at` **and** the `id` of the last entry you were given,
+since several entries commonly share a millisecond:
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:3000/api/auth/login \
@@ -540,7 +547,7 @@ TOKEN=$(curl -s -X POST http://localhost:3000/api/auth/login \
   -d '{"username":"manager","password":"YOUR_PASSWORD"}' | grep -o '"token":"[^"]*' | cut -d'"' -f4)
 
 curl -s -H "authorization: Bearer $TOKEN" \
-  'http://localhost:3000/api/admin/audit?limit=50'
+  'http://localhost:3000/api/admin/audit?limit=50&family=user'
 ```
 
 ---
