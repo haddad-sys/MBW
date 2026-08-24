@@ -1,0 +1,1415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QMS Document Register</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface-2: #fafbfc;
+    --line: #dfe3e8;
+    --line-strong: #c6ccd4;
+    --text: #1c2430;
+    --muted: #61708a;
+    --accent: #1f3864;
+    --accent-soft: #e8edf7;
+    --danger: #9c0006;
+    --danger-soft: #ffd9dc;
+    --warn: #7f6000;
+    --warn-soft: #fff0c9;
+    --ok: #1d6b3f;
+    --ok-soft: #dcf2e5;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.08);
+    --radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181f;
+      --surface: #1b212b;
+      --surface-2: #202734;
+      --line: #2e3746;
+      --line-strong: #3d4859;
+      --text: #e7ecf3;
+      --muted: #9aa8bd;
+      --accent: #7ea3e0;
+      --accent-soft: #23304a;
+      --danger: #ff9ba3;
+      --danger-soft: #45222a;
+      --warn: #f0cf7a;
+      --warn-soft: #3d3319;
+      --ok: #7bd6a2;
+      --ok-soft: #1c3529;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font: 14px/1.5 "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1, h2, h3 { margin: 0; font-weight: 600; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+
+  /* ---------- shell ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .brand h1 { font-size: 16px; letter-spacing: -.01em; white-space: nowrap; }
+  .brand .sub {
+    font-size: 12px; color: var(--muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .topbar .spacer { flex: 1; }
+  .who { font-size: 12px; color: var(--muted); text-align: right; line-height: 1.35; }
+  .who strong { display: block; color: var(--text); font-weight: 600; }
+
+  main { padding: 20px; max-width: 1600px; margin: 0 auto; }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 13px;
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--line-strong); border-radius: 6px;
+    cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s;
+  }
+  .btn:hover:not(:disabled) { background: var(--surface-2); border-color: var(--muted); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.primary {
+    background: var(--accent); border-color: var(--accent);
+    color: #fff; font-weight: 600;
+  }
+  @media (prefers-color-scheme: dark) { .btn.primary { color: #14181f; } }
+  .btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+  .btn.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+  .btn.danger:hover:not(:disabled) { background: var(--danger-soft); }
+  .btn.link {
+    border: none; background: none; color: var(--accent);
+    padding: 4px 2px; text-decoration: underline;
+  }
+
+  /* ---------- stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 12px 14px;
+  }
+  .stat .n { font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+  .stat .l { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stat.alert .n { color: var(--danger); }
+  .stat.warn .n { color: var(--warn); }
+
+  /* ---------- toolbar ---------- */
+  .toolbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius) var(--radius) 0 0;
+    border-bottom: none; padding: 12px 14px;
+  }
+  .toolbar input[type=search], .toolbar select {
+    padding: 7px 10px; background: var(--surface-2);
+    border: 1px solid var(--line-strong); border-radius: 6px;
+  }
+  .toolbar input[type=search] { flex: 1; min-width: 200px; }
+  .toolbar .spacer { flex: 1; }
+
+  /* ---------- table ---------- */
+  .table-wrap {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 0 0 var(--radius) var(--radius);
+    overflow: auto; max-height: calc(100vh - 300px);
+  }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--surface-2); color: var(--muted);
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+    white-space: nowrap; border-bottom: 1px solid var(--line-strong);
+  }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--accent-soft); }
+  td.doc { font-family: "Cascadia Mono", Consolas, monospace; white-space: nowrap; }
+  td.title { font-weight: 500; min-width: 220px; }
+  td.num { text-align: center; }
+  .empty { padding: 48px 20px; text-align: center; color: var(--muted); }
+
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 11px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+  }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.dim { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+  .pill.bad { background: var(--danger-soft); color: var(--danger); }
+  .overdue { color: var(--danger); font-weight: 600; }
+
+  /* ---------- panels / modal ---------- */
+  .scrim {
+    position: fixed; inset: 0; background: rgba(16,24,40,.45);
+    display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50;
+  }
+  .panel {
+    background: var(--surface); border-radius: 10px; box-shadow: var(--shadow);
+    width: 100%; max-width: 780px; max-height: 90vh; display: flex; flex-direction: column;
+    border: 1px solid var(--line);
+  }
+  .panel > header {
+    padding: 16px 20px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .panel > header h2 { font-size: 15px; }
+  .panel > .body { padding: 20px; overflow: auto; }
+  .panel > footer {
+    padding: 14px 20px; border-top: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px; background: var(--surface-2);
+    border-radius: 0 0 10px 10px;
+  }
+  .panel > footer .spacer { flex: 1; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .field.wide { grid-column: 1 / -1; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .field label .req { color: var(--danger); }
+  .field input, .field select, .field textarea {
+    padding: 8px 10px; background: var(--surface-2);
+    border: 1px solid var(--line-strong); border-radius: 6px; width: 100%;
+  }
+  .field textarea { min-height: 68px; resize: vertical; }
+  .field .help { font-size: 11px; color: var(--muted); }
+  .field.bad input, .field.bad select { border-color: var(--danger); }
+
+  .notice {
+    padding: 10px 12px; border-radius: 6px; font-size: 13px;
+    background: var(--warn-soft); color: var(--warn); margin-bottom: 14px;
+  }
+  .notice.bad { background: var(--danger-soft); color: var(--danger); }
+
+  .checks h3 { font-size: 13px; margin: 18px 0 6px; }
+  .checks h3:first-child { margin-top: 0; }
+  .checks ul { margin: 0; padding-left: 20px; color: var(--muted); }
+  .checks li { margin: 3px 0; }
+  .checks .clean { color: var(--ok); }
+
+  /* ---------- gate (setup / sign-in) ---------- */
+  .gate { max-width: 620px; margin: 8vh auto; padding: 0 20px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; padding: 26px; box-shadow: var(--shadow);
+  }
+  .card h2 { font-size: 18px; margin-bottom: 6px; }
+  .card p { color: var(--muted); margin: 0 0 18px; }
+  .card .grid { grid-template-columns: 1fr; }
+  @media (min-width: 560px) { .card .grid { grid-template-columns: 1fr 1fr; } }
+
+  /* ---------- toast ---------- */
+  #toasts { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+  .toast {
+    background: var(--surface); border: 1px solid var(--line-strong);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px; padding: 10px 14px; box-shadow: var(--shadow); max-width: 380px;
+  }
+  .toast.bad { border-left-color: var(--danger); }
+  .toast.ok { border-left-color: var(--ok); }
+
+  .hidden { display: none !important; }
+  .spin {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--line-strong); border-top-color: var(--accent);
+    animation: spin .7s linear infinite; display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  code { font-family: "Cascadia Mono", Consolas, monospace; font-size: .92em; }
+</style>
+</head>
+<body>
+
+<div id="toasts"></div>
+
+<!-- ============ setup ============ -->
+<section id="setup-view" class="gate hidden">
+  <div class="card">
+    <h2>Connect this page to your workbook</h2>
+    <p>These settings are stored in this browser only. Neither the client ID nor the
+       tenant ID is a secret — a single-page app publishes both by design.</p>
+    <form id="setup-form">
+      <div class="grid">
+        <div class="field">
+          <label for="cfg-tenant">Directory (tenant) ID <span class="req">*</span></label>
+          <input id="cfg-tenant" required placeholder="00000000-0000-0000-0000-000000000000">
+        </div>
+        <div class="field">
+          <label for="cfg-client">Application (client) ID <span class="req">*</span></label>
+          <input id="cfg-client" required placeholder="00000000-0000-0000-0000-000000000000">
+        </div>
+        <div class="field">
+          <label for="cfg-host">SharePoint hostname <span class="req">*</span></label>
+          <input id="cfg-host" required placeholder="contoso.sharepoint.com">
+        </div>
+        <div class="field">
+          <label for="cfg-site">Site path <span class="req">*</span></label>
+          <input id="cfg-site" required placeholder="/sites/QMS">
+        </div>
+        <div class="field wide">
+          <label for="cfg-file">Workbook path within the site's document library <span class="req">*</span></label>
+          <input id="cfg-file" required placeholder="General/QMS-Document-Register.xlsx">
+          <span class="help">Relative to the library root. In a Teams-connected site the
+            default library is <code>Shared Documents</code>, and its root is what this path starts from.</span>
+        </div>
+        <div class="field">
+          <label for="cfg-sheet">Worksheet name</label>
+          <input id="cfg-sheet" value="Register">
+        </div>
+        <div class="field">
+          <label for="cfg-table">Table name</label>
+          <input id="cfg-table" value="DocumentRegister">
+        </div>
+      </div>
+      <div style="margin-top:18px; display:flex; gap:10px; align-items:center;">
+        <button class="btn primary" type="submit">Save and sign in</button>
+        <span class="help" id="setup-redirect"></span>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- ============ sign in ============ -->
+<section id="signin-view" class="gate hidden">
+  <div class="card">
+    <h2>QMS Document Register</h2>
+    <p id="signin-target"></p>
+    <div id="signin-error" class="notice bad hidden"></div>
+    <button class="btn primary" id="signin-btn">Sign in with Microsoft</button>
+    <button class="btn link" id="signin-settings">Change connection settings</button>
+  </div>
+</section>
+
+<!-- ============ loading ============ -->
+<section id="loading-view" class="gate hidden">
+  <div class="card" style="display:flex; align-items:center; gap:12px;">
+    <span class="spin"></span>
+    <span id="loading-msg">Opening the workbook…</span>
+  </div>
+</section>
+
+<!-- ============ app ============ -->
+<div id="app-view" class="hidden">
+  <div class="topbar">
+    <div class="brand">
+      <h1>QMS Document Register</h1>
+      <span class="sub" id="file-label"></span>
+    </div>
+    <div class="spacer"></div>
+    <a class="btn" id="open-excel" target="_blank" rel="noopener">Open in Excel</a>
+    <div class="who"><strong id="who-name"></strong><span id="who-mail"></span></div>
+    <button class="btn" id="signout-btn">Sign out</button>
+  </div>
+
+  <main>
+    <div class="stats" id="stats"></div>
+
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Search number, title, owner, process, notes…">
+      <select id="f-status"><option value="">All statuses</option></select>
+      <select id="f-type"><option value="">All types</option></select>
+      <select id="f-function"><option value="">All functions</option></select>
+      <div class="spacer"></div>
+      <button class="btn" id="checks-btn">Integrity checks</button>
+      <button class="btn" id="refresh-btn">Refresh</button>
+      <button class="btn primary" id="new-btn">New record</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr id="thead-row"></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty hidden" id="empty-msg"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ============ record form ============ -->
+<div id="form-scrim" class="scrim hidden">
+  <div class="panel">
+    <header><h2 id="form-title">New record</h2></header>
+    <div class="body">
+      <div id="form-error" class="notice bad hidden"></div>
+      <form id="record-form" class="grid" autocomplete="off"></form>
+    </div>
+    <footer>
+      <button class="btn danger hidden" id="delete-btn">Delete row</button>
+      <div class="spacer"></div>
+      <button class="btn" id="cancel-btn">Cancel</button>
+      <button class="btn primary" id="save-btn">Save to Excel</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ============ checks ============ -->
+<div id="checks-scrim" class="scrim hidden">
+  <div class="panel" style="max-width:640px;">
+    <header><h2>Integrity checks</h2></header>
+    <div class="body checks" id="checks-body"></div>
+    <footer>
+      <div class="spacer"></div>
+      <button class="btn" id="checks-close">Close</button>
+    </footer>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================================
+   Configuration
+
+   Fill these in to ship the page pre-configured for your tenant; leave them
+   blank and each user is asked once, on first load, and the answers are kept
+   in their browser. None of it is secret: a single-page app has no client
+   secret, and the client and tenant IDs travel in the sign-in URL anyway.
+   ========================================================================== */
+const BUILT_IN_CONFIG = {
+  tenantId:  "",                     // Directory (tenant) ID
+  clientId:  "",                     // Application (client) ID of the SPA registration
+  hostname:  "",                     // e.g. contoso.sharepoint.com
+  sitePath:  "",                     // e.g. /sites/QMS
+  filePath:  "",                     // e.g. General/QMS-Document-Register.xlsx
+  sheetName: "Register",
+  tableName: "DocumentRegister",
+};
+
+const SCOPES = [
+  "openid", "profile", "offline_access",
+  "https://graph.microsoft.com/User.Read",
+  "https://graph.microsoft.com/Sites.Read.All",
+  "https://graph.microsoft.com/Files.ReadWrite.All",
+].join(" ");
+
+const GRAPH = "https://graph.microsoft.com/v1.0";
+const CFG_KEY = "qmsRegister.config";
+const TOK_KEY = "qmsRegister.token";
+const PKCE_KEY = "qmsRegister.pkce";
+
+/* Fields, in workbook column order. `key` must match the header text in the
+   Excel table exactly — that is the whole contract between page and workbook.
+   Add a column in Excel plus an entry here and it becomes editable; a column
+   present in Excel but missing here is preserved untouched on save. */
+const FIELDS = [
+  { key: "Doc No", label: "Document number", type: "text", required: true },
+  { key: "Title", label: "Title", type: "text", required: true, wide: true },
+  { key: "Type", label: "Type", type: "list", list: "Type", required: true },
+  { key: "Function", label: "Owning function", type: "list", list: "Function", required: true },
+  { key: "Process", label: "Process", type: "text" },
+  { key: "Owner", label: "Owner", type: "text", required: true,
+    help: "A position title, never a person's name." },
+  { key: "Rev", label: "Revision", type: "text",
+    help: "Use — for a document that is only planned." },
+  { key: "Status", label: "Status", type: "list", list: "Status", required: true },
+  { key: "Issue Date", label: "Issue date", type: "date" },
+  { key: "Next Review", label: "Next review", type: "date" },
+  { key: "Location", label: "Location", type: "text", wide: true,
+    help: "Where the document actually lives. A register nobody can follow to the document fails its first purpose." },
+  { key: "Language", label: "Language", type: "list", list: "Language" },
+  { key: "Parent Doc", label: "Parent document", type: "text",
+    help: "The policy or manual this sits under." },
+  { key: "ISO 9001 Clauses", label: "ISO 9001 clauses", type: "text" },
+  { key: "Notes", label: "Notes", type: "textarea", wide: true },
+];
+
+const TABLE_COLUMNS = ["Doc No", "Title", "Type", "Function", "Owner", "Rev", "Status", "Next Review"];
+
+const TYPE_NAMES = {
+  PO: "Policy", MN: "Manual", PR: "Procedure", WI: "Work instruction",
+  FM: "Form", GL: "Guideline", ST: "Standard", TR: "Training material",
+};
+
+/* Used only if the workbook has no Lists sheet to read them from. */
+const FALLBACK_LISTS = {
+  Type: Object.keys(TYPE_NAMES),
+  Status: ["Approved", "In Review", "In Development", "Planned",
+           "Under Revision", "Superseded", "Withdrawn", "Uncontrolled (legacy)"],
+  Language: ["EN", "AR", "Bilingual"],
+  Function: ["Quality Assurance", "Operations", "HSSE", "Engineering", "Maintenance",
+             "Human Resources", "Finance", "Procurement", "Information Technology"],
+};
+
+const STATUS_TONE = {
+  "Approved": "ok",
+  "In Review": "warn",
+  "In Development": "warn",
+  "Planned": "warn",
+  "Under Revision": "warn",
+  "Superseded": "dim",
+  "Withdrawn": "dim",
+  "Uncontrolled (legacy)": "bad",
+};
+
+const CLOSED_STATUSES = new Set(["Superseded", "Withdrawn"]);
+
+/* ============================== small helpers ============================= */
+const $ = (id) => document.getElementById(id);
+const today = () => new Date().toISOString().slice(0, 10);
+
+/* Header text becomes an element id, so strip anything not id-safe. */
+const fieldId = (key) => "f-" + String(key).replace(/[^A-Za-z0-9]+/g, "-");
+
+function show(id) {
+  for (const v of ["setup-view", "signin-view", "loading-view", "app-view"]) {
+    $(v).classList.toggle("hidden", v !== id);
+  }
+}
+
+function toast(message, tone) {
+  const el = document.createElement("div");
+  el.className = "toast" + (tone ? " " + tone : "");
+  el.textContent = message;
+  $("toasts").appendChild(el);
+  setTimeout(() => el.remove(), tone === "bad" ? 9000 : 4500);
+}
+
+/* Worksheet and table names are interpolated into OData string literals. */
+function odataName(name) {
+  return String(name).replace(/'/g, "''");
+}
+
+function encodePath(path) {
+  return String(path).split("/").filter(Boolean).map(encodeURIComponent).join("/");
+}
+
+function b64url(bytes) {
+  let s = "";
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function randomString(byteLength) {
+  return b64url(crypto.getRandomValues(new Uint8Array(byteLength)));
+}
+
+async function s256(text) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return b64url(new Uint8Array(digest));
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* ============================== configuration ============================= */
+function loadConfig() {
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem(CFG_KEY) || "{}"); } catch { /* ignore */ }
+  const merged = Object.assign({}, BUILT_IN_CONFIG, stored);
+  merged.sheetName = merged.sheetName || "Register";
+  merged.tableName = merged.tableName || "DocumentRegister";
+  return merged;
+}
+
+function configComplete(c) {
+  return Boolean(c.tenantId && c.clientId && c.hostname && c.sitePath && c.filePath);
+}
+
+let config = loadConfig();
+
+const redirectUri = location.origin + location.pathname;
+
+/* ================================== auth ================================== */
+const auth = {
+  token: null,
+
+  restore() {
+    try {
+      const raw = sessionStorage.getItem(TOK_KEY);
+      if (raw) this.token = JSON.parse(raw);
+    } catch { /* ignore */ }
+  },
+
+  persist() {
+    if (this.token) sessionStorage.setItem(TOK_KEY, JSON.stringify(this.token));
+    else sessionStorage.removeItem(TOK_KEY);
+  },
+
+  signedIn() {
+    return Boolean(this.token && this.token.refreshToken);
+  },
+
+  authority() {
+    return "https://login.microsoftonline.com/" + encodeURIComponent(config.tenantId) + "/oauth2/v2.0";
+  },
+
+  async beginSignIn() {
+    const verifier = randomString(48);
+    const state = randomString(16);
+    sessionStorage.setItem(PKCE_KEY, JSON.stringify({ verifier, state }));
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      response_type: "code",
+      redirect_uri: redirectUri,
+      response_mode: "query",
+      scope: SCOPES,
+      state,
+      code_challenge: await s256(verifier),
+      code_challenge_method: "S256",
+    });
+    location.assign(this.authority() + "/authorize?" + params.toString());
+  },
+
+  /* Returns true when a sign-in redirect was consumed. */
+  async completeSignIn() {
+    const query = new URLSearchParams(location.search);
+    const code = query.get("code");
+    const error = query.get("error");
+    if (!code && !error) return false;
+
+    let pkce = {};
+    try { pkce = JSON.parse(sessionStorage.getItem(PKCE_KEY) || "{}"); } catch { /* ignore */ }
+    sessionStorage.removeItem(PKCE_KEY);
+    history.replaceState(null, "", redirectUri);
+
+    if (error) {
+      throw new Error(query.get("error_description") || error);
+    }
+    if (!pkce.verifier || query.get("state") !== pkce.state) {
+      throw new Error("Sign-in state did not match. Start the sign-in again.");
+    }
+
+    await this.exchange({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: redirectUri,
+      code_verifier: pkce.verifier,
+    });
+    return true;
+  },
+
+  async exchange(extra) {
+    const body = new URLSearchParams(Object.assign({
+      client_id: config.clientId,
+      scope: SCOPES,
+    }, extra));
+
+    const res = await fetch(this.authority() + "/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      this.token = null;
+      this.persist();
+      throw new Error(data.error_description || data.error || "Could not obtain a token.");
+    }
+    this.token = {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token || (this.token && this.token.refreshToken),
+      expiresAt: Date.now() + (Number(data.expires_in || 3600) - 120) * 1000,
+    };
+    this.persist();
+  },
+
+  async accessToken() {
+    if (!this.token) throw new Error("Not signed in.");
+    if (Date.now() < this.token.expiresAt) return this.token.accessToken;
+    if (!this.token.refreshToken) throw new Error("Session expired. Sign in again.");
+    await this.exchange({ grant_type: "refresh_token", refresh_token: this.token.refreshToken });
+    return this.token.accessToken;
+  },
+
+  signOut() {
+    this.token = null;
+    this.persist();
+    workbook.reset();
+    location.reload();
+  },
+};
+
+/* ================================= graph ================================== */
+const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+
+async function graphFetch(path, options) {
+  const opts = options || {};
+  let attempt = 0;
+  let refreshed = false;
+
+  for (;;) {
+    const headers = {
+      Authorization: "Bearer " + (await auth.accessToken()),
+      Accept: "application/json",
+    };
+    if (opts.body !== undefined) headers["Content-Type"] = "application/json";
+    if (workbook.sessionId && !opts.noSession) {
+      headers["workbook-session-id"] = workbook.sessionId;
+    }
+
+    const res = await fetch(GRAPH + path, {
+      method: opts.method || "GET",
+      headers,
+      body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+    });
+
+    if (res.status === 204) return null;
+    if (res.ok) return res.json().catch(() => null);
+
+    const payload = await res.json().catch(() => ({}));
+    const code = (payload.error && payload.error.code) || "";
+    const message = (payload.error && payload.error.message) || res.statusText;
+
+    /* An access token rejected mid-flight: refresh once, then give up. */
+    if (res.status === 401 && !refreshed && auth.token && auth.token.refreshToken) {
+      refreshed = true;
+      auth.token.expiresAt = 0;
+      continue;
+    }
+
+    /* Workbook sessions expire after a few minutes idle. Drop and retry once. */
+    if (workbook.sessionId && /InvalidSession|SessionNotFound|invalidSessionId/i.test(code + message)) {
+      workbook.sessionId = null;
+      if (attempt++ < 2) continue;
+    }
+
+    if (RETRYABLE.has(res.status) && attempt < 3) {
+      const retryAfter = Number(res.headers.get("Retry-After"));
+      await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 800 * Math.pow(2, attempt));
+      attempt++;
+      continue;
+    }
+
+    const err = new Error(message);
+    err.status = res.status;
+    err.code = code;
+    throw err;
+  }
+}
+
+/* ============================ workbook data layer ========================= */
+const workbook = {
+  siteId: null,
+  itemId: null,
+  webUrl: null,
+  fileName: null,
+  sessionId: null,
+
+  headers: [],        // header text, in column order
+  rows: [],           // { index, sheetRow, values: [], get(key) }
+  lists: {},
+  sheetStartRow: 1,
+  firstCol: "A",
+  lastCol: "A",
+
+  reset() {
+    this.siteId = this.itemId = this.sessionId = null;
+    this.rows = [];
+    this.headers = [];
+  },
+
+  base() {
+    return "/sites/" + this.siteId + "/drive/items/" + this.itemId + "/workbook";
+  },
+
+  sheet() {
+    return this.base() + "/worksheets('" + encodeURIComponent(odataName(config.sheetName)) + "')";
+  },
+
+  table() {
+    return this.base() + "/tables('" + encodeURIComponent(odataName(config.tableName)) + "')";
+  },
+
+  async resolveFile() {
+    const site = await graphFetch(
+      "/sites/" + encodeURIComponent(config.hostname) + ":" +
+      "/" + encodePath(config.sitePath),
+      { noSession: true }
+    );
+    this.siteId = site.id;
+
+    const item = await graphFetch(
+      "/sites/" + this.siteId + "/drive/root:/" + encodePath(config.filePath),
+      { noSession: true }
+    );
+    this.itemId = item.id;
+    this.webUrl = item.webUrl;
+    this.fileName = item.name;
+  },
+
+  async openSession() {
+    try {
+      const session = await graphFetch(this.base() + "/createSession",
+        { method: "POST", body: { persistChanges: true }, noSession: true });
+      this.sessionId = session && session.id;
+    } catch {
+      /* Sessions are an optimisation, not a requirement — carry on without. */
+      this.sessionId = null;
+    }
+  },
+
+  async loadLists() {
+    const lists = Object.assign({}, FALLBACK_LISTS);
+    try {
+      const range = await graphFetch(
+        this.base() + "/worksheets('Lists')/usedRange(valuesOnly=true)?$select=values");
+      const values = (range && range.values) || [];
+      if (values.length > 1) {
+        const heads = values[0].map((h) => String(h == null ? "" : h).trim());
+        heads.forEach((head, col) => {
+          if (!head) return;
+          const items = [];
+          for (let r = 1; r < values.length; r++) {
+            const cell = values[r][col];
+            const text = cell == null ? "" : String(cell).trim();
+            if (text) items.push(text);
+          }
+          if (items.length) lists[head] = items;
+        });
+      }
+    } catch {
+      /* No Lists sheet — the fallbacks above stand in. */
+    }
+    this.lists = lists;
+  },
+
+  /* One request pulls the whole table: header row plus every data row. */
+  async loadRows() {
+    const range = await graphFetch(this.table() + "/range?$select=address,values");
+    const address = String(range.address || "");
+    const parsed = /^(?:'([^']*)'|([^!]+))!\$?([A-Z]+)\$?(\d+):\$?([A-Z]+)\$?(\d+)$/.exec(address);
+    if (!parsed) throw new Error("Could not read the table's address (" + address + ").");
+
+    this.firstCol = parsed[3];
+    this.lastCol = parsed[5];
+    this.sheetStartRow = Number(parsed[4]);
+
+    const values = range.values || [];
+    this.headers = (values[0] || []).map((h) => String(h == null ? "" : h).trim());
+
+    this.rows = [];
+    for (let i = 1; i < values.length; i++) {
+      this.rows.push(this.makeRow(i - 1, values[i]));
+    }
+  },
+
+  makeRow(index, values) {
+    const headers = this.headers;
+    return {
+      index,
+      sheetRow: this.sheetStartRow + 1 + index,
+      values: headers.map((_, c) => {
+        const v = values[c];
+        return v == null ? "" : String(v);
+      }),
+      get(key) {
+        const c = headers.indexOf(key);
+        return c === -1 ? "" : this.values[c];
+      },
+    };
+  },
+
+  rowAddress(row) {
+    return this.firstCol + row.sheetRow + ":" + this.lastCol + row.sheetRow;
+  },
+
+  /* Build a full-width value array, preserving columns the page does not manage. */
+  toValues(record, existing) {
+    return this.headers.map((header, c) => {
+      if (Object.prototype.hasOwnProperty.call(record, header)) {
+        return record[header] == null ? "" : String(record[header]);
+      }
+      return existing ? existing.values[c] : "";
+    });
+  },
+
+  async addRow(record) {
+    await graphFetch(this.table() + "/rows/add",
+      { method: "POST", body: { index: null, values: [this.toValues(record, null)] } });
+  },
+
+  /* Guards against the row having moved under us — someone inserting or deleting
+     a row in Excel shifts every index below it, and Graph addresses rows by
+     position, not identity. */
+  async assertUnmoved(row) {
+    const current = await graphFetch(
+      this.sheet() + "/range(address='" + this.rowAddress(row) + "')?$select=values");
+    const values = (current && current.values && current.values[0]) || [];
+    const keyCol = this.headers.indexOf("Doc No");
+    const seen = keyCol === -1 ? "" : String(values[keyCol] == null ? "" : values[keyCol]);
+    if (seen !== row.get("Doc No")) {
+      throw new Error(
+        "This row has moved in the workbook since it was loaded — someone else has " +
+        "edited the file. Nothing was written. Refresh and try again.");
+    }
+  },
+
+  async updateRow(row, record) {
+    await this.assertUnmoved(row);
+    await graphFetch(this.sheet() + "/range(address='" + this.rowAddress(row) + "')",
+      { method: "PATCH", body: { values: [this.toValues(record, row)] } });
+  },
+
+  async deleteRow(row) {
+    await this.assertUnmoved(row);
+    await graphFetch(this.sheet() + "/range(address='" + this.rowAddress(row) + "')/delete",
+      { method: "POST", body: { shift: "Up" } });
+  },
+};
+
+/* ================================== view ================================== */
+/* Register content is user data and goes into the DOM as text, never as markup. */
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+const view = {
+  sortKey: "Doc No",
+  sortDir: 1,
+  editing: null,
+
+  isOverdue(row) {
+    const due = row.get("Next Review");
+    return Boolean(due) && due < today() && !CLOSED_STATUSES.has(row.get("Status"));
+  },
+
+  filtered() {
+    const q = $("q").value.trim().toLowerCase();
+    const status = $("f-status").value;
+    const type = $("f-type").value;
+    const fn = $("f-function").value;
+
+    const rows = workbook.rows.filter((row) => {
+      if (status && row.get("Status") !== status) return false;
+      if (type && row.get("Type") !== type) return false;
+      if (fn && row.get("Function") !== fn) return false;
+      if (!q) return true;
+      return row.values.some((v) => v.toLowerCase().includes(q));
+    });
+
+    const key = this.sortKey;
+    const dir = this.sortDir;
+    return rows.sort((a, b) => {
+      const av = a.get(key), bv = b.get(key);
+      if (av === bv) return a.index - b.index;
+      if (av === "") return 1;
+      if (bv === "") return -1;
+      return av.localeCompare(bv, undefined, { numeric: true, sensitivity: "base" }) * dir;
+    });
+  },
+
+  renderStats() {
+    const rows = workbook.rows;
+    const gaps = rows.filter((r) => ["Planned", "In Development"].includes(r.get("Status"))).length;
+    const overdue = rows.filter((r) => this.isOverdue(r)).length;
+    const stats = [
+      { n: rows.length, l: "Documents on the register" },
+      { n: rows.filter((r) => r.get("Status") === "Approved").length, l: "Approved" },
+      { n: gaps, l: "Planned or in development", tone: gaps ? "warn" : "" },
+      { n: overdue, l: "Overdue for review", tone: overdue ? "alert" : "" },
+    ];
+    const host = $("stats");
+    host.replaceChildren();
+    for (const s of stats) {
+      const card = el("div", "stat" + (s.tone ? " " + s.tone : ""));
+      card.append(el("div", "n", String(s.n)), el("div", "l", s.l));
+      host.append(card);
+    }
+  },
+
+  renderHead() {
+    const tr = $("thead-row");
+    tr.replaceChildren();
+    for (const key of TABLE_COLUMNS) {
+      const th = el("th", null, key + (this.sortKey === key ? (this.sortDir === 1 ? " ↑" : " ↓") : ""));
+      th.style.cursor = "pointer";
+      th.onclick = () => {
+        if (this.sortKey === key) this.sortDir *= -1;
+        else { this.sortKey = key; this.sortDir = 1; }
+        this.renderHead();
+        this.renderRows();
+      };
+      tr.append(th);
+    }
+  },
+
+  renderRows() {
+    const rows = this.filtered();
+    const body = $("tbody");
+    body.replaceChildren();
+
+    for (const row of rows) {
+      const tr = document.createElement("tr");
+      tr.onclick = () => form.open(row);
+
+      for (const key of TABLE_COLUMNS) {
+        const value = row.get(key);
+        let td;
+        if (key === "Status") {
+          td = el("td");
+          td.append(el("span", "pill " + (STATUS_TONE[value] || "dim"), value || "—"));
+        } else if (key === "Type") {
+          td = el("td", null, value ? value + " · " + (TYPE_NAMES[value] || "") : "—");
+        } else if (key === "Next Review") {
+          td = el("td", this.isOverdue(row) ? "overdue" : null, value || "—");
+        } else if (key === "Doc No") {
+          td = el("td", "doc", value || "—");
+        } else if (key === "Title") {
+          td = el("td", "title", value || "—");
+        } else if (key === "Rev") {
+          td = el("td", "num", value || "—");
+        } else {
+          td = el("td", null, value || "—");
+        }
+        tr.append(td);
+      }
+      body.append(tr);
+    }
+
+    const empty = $("empty-msg");
+    empty.classList.toggle("hidden", rows.length > 0);
+    empty.textContent = workbook.rows.length
+      ? "No records match the current filters."
+      : "The register is empty. Add the first record.";
+  },
+
+  fillFilters() {
+    const set = (id, values) => {
+      const select = $(id);
+      const current = select.value;
+      while (select.options.length > 1) select.remove(1);
+      for (const v of values) select.add(new Option(v, v));
+      select.value = current;
+    };
+    set("f-status", workbook.lists.Status || FALLBACK_LISTS.Status);
+    set("f-type", workbook.lists.Type || FALLBACK_LISTS.Type);
+    set("f-function", workbook.lists.Function || FALLBACK_LISTS.Function);
+  },
+
+  renderAll() {
+    this.fillFilters();
+    this.renderStats();
+    this.renderHead();
+    this.renderRows();
+  },
+};
+
+/* ================================== form ================================== */
+const form = {
+  row: null,
+
+  build() {
+    const host = $("record-form");
+    host.replaceChildren();
+
+    for (const field of FIELDS) {
+      if (!workbook.headers.includes(field.key)) continue;
+
+      const wrap = el("div", "field" + (field.wide || field.type === "textarea" ? " wide" : ""));
+      wrap.dataset.key = field.key;
+
+      const label = el("label", null, field.label);
+      label.htmlFor = fieldId(field.key);
+      if (field.required) {
+        label.append(" ");
+        label.append(el("span", "req", "*"));
+      }
+      wrap.append(label);
+
+      let input;
+      if (field.type === "list") {
+        input = document.createElement("select");
+        input.add(new Option("—", ""));
+        for (const value of (workbook.lists[field.list] || FALLBACK_LISTS[field.list] || [])) {
+          const text = field.list === "Type" && TYPE_NAMES[value]
+            ? value + " — " + TYPE_NAMES[value] : value;
+          input.add(new Option(text, value));
+        }
+      } else if (field.type === "textarea") {
+        input = document.createElement("textarea");
+      } else {
+        input = document.createElement("input");
+        input.type = field.type === "date" ? "date" : "text";
+      }
+      input.id = fieldId(field.key);
+      wrap.append(input);
+
+      if (field.help) wrap.append(el("span", "help", field.help));
+      host.append(wrap);
+    }
+
+    /* Suggest the next number in the series when the type is chosen for a new record. */
+    const typeInput = $(fieldId("Type"));
+    const docInput = $(fieldId("Doc No"));
+    if (typeInput && docInput) {
+      typeInput.addEventListener("change", () => {
+        if (this.row || docInput.value.trim()) return;
+        const suggestion = this.suggestDocNo(typeInput.value);
+        if (suggestion) docInput.value = suggestion;
+      });
+    }
+  },
+
+  suggestDocNo(type) {
+    if (!type) return "";
+    const pattern = /^(.*?)(\d+)\s*$/;
+    let prefix = "QMS-" + type + "-";
+    let width = 3;
+    let highest = 0;
+
+    for (const row of workbook.rows) {
+      if (row.get("Type") !== type) continue;
+      const match = pattern.exec(row.get("Doc No"));
+      if (!match) continue;
+      prefix = match[1];
+      width = match[2].length;
+      highest = Math.max(highest, Number(match[2]));
+    }
+    return prefix + String(highest + 1).padStart(width, "0");
+  },
+
+  open(row) {
+    this.row = row || null;
+    $("form-title").textContent = row ? "Edit " + (row.get("Doc No") || "record") : "New record";
+    $("form-error").classList.add("hidden");
+    $("delete-btn").classList.toggle("hidden", !row);
+
+    for (const field of FIELDS) {
+      const input = $(fieldId(field.key));
+      if (!input) continue;
+      const value = row ? row.get(field.key) : "";
+      input.value = value;
+      /* A list value that is not on the controlled list would silently blank the
+         select, so widen the list rather than lose the value. */
+      if (field.type === "list" && value && input.value !== value) {
+        input.add(new Option(value + " (not on list)", value));
+        input.value = value;
+      }
+      input.closest(".field").classList.remove("bad");
+    }
+
+    if (!row) {
+      const status = $(fieldId("Status"));
+      if (status) status.value = "In Development";
+      const language = $(fieldId("Language"));
+      if (language && !language.value) language.value = "EN";
+    }
+
+    $("form-scrim").classList.remove("hidden");
+    const first = $(fieldId("Doc No"));
+    if (first) first.focus();
+  },
+
+  close() {
+    $("form-scrim").classList.add("hidden");
+    this.row = null;
+  },
+
+  collect() {
+    const record = {};
+    for (const field of FIELDS) {
+      const input = $(fieldId(field.key));
+      if (input) record[field.key] = input.value.trim();
+    }
+    return record;
+  },
+
+  validate(record) {
+    const problems = [];
+    for (const field of FIELDS) {
+      const input = $(fieldId(field.key));
+      if (!input) continue;
+      const bad = field.required && !record[field.key];
+      input.closest(".field").classList.toggle("bad", bad);
+      if (bad) problems.push(field.label + " is required.");
+    }
+
+    const docNo = record["Doc No"];
+    if (docNo) {
+      const clash = workbook.rows.some(
+        (r) => r !== this.row && r.get("Doc No").toLowerCase() === docNo.toLowerCase());
+      if (clash) {
+        problems.push("Document number " + docNo + " is already on the register. " +
+                      "Numbers must be unique.");
+        $(fieldId("Doc No")).closest(".field").classList.add("bad");
+      }
+    }
+
+    const issued = record["Issue Date"], review = record["Next Review"];
+    if (issued && review && review < issued) {
+      problems.push("Next review cannot fall before the issue date.");
+    }
+    return problems;
+  },
+
+  async save() {
+    const record = this.collect();
+    const problems = this.validate(record);
+    const error = $("form-error");
+    if (problems.length) {
+      error.textContent = problems.join(" ");
+      error.classList.remove("hidden");
+      return;
+    }
+    error.classList.add("hidden");
+
+    const button = $("save-btn");
+    button.disabled = true;
+    button.textContent = "Saving…";
+    try {
+      if (this.row) await workbook.updateRow(this.row, record);
+      else await workbook.addRow(record);
+      await refresh();
+      toast(this.row ? "Row updated in the workbook." : "Row added to the workbook.", "ok");
+      this.close();
+    } catch (e) {
+      error.textContent = e.message;
+      error.classList.remove("hidden");
+    } finally {
+      button.disabled = false;
+      button.textContent = "Save to Excel";
+    }
+  },
+
+  async remove() {
+    if (!this.row) return;
+    const docNo = this.row.get("Doc No") || "this row";
+    const ok = confirm(
+      "Delete " + docNo + " from the workbook?\n\n" +
+      "On a controlled register the usual course is to set the status to Withdrawn " +
+      "or Superseded, which keeps the history. Deleting removes the row entirely.");
+    if (!ok) return;
+
+    const button = $("delete-btn");
+    button.disabled = true;
+    try {
+      await workbook.deleteRow(this.row);
+      await refresh();
+      toast("Row deleted from the workbook.", "ok");
+      this.close();
+    } catch (e) {
+      const error = $("form-error");
+      error.textContent = e.message;
+      error.classList.remove("hidden");
+    } finally {
+      button.disabled = false;
+    }
+  },
+};
+
+/* =============================== checks =================================== */
+function runChecks() {
+  const rows = workbook.rows;
+  const numbers = new Map();
+  for (const row of rows) {
+    const key = row.get("Doc No").trim().toLowerCase();
+    if (!key) continue;
+    numbers.set(key, (numbers.get(key) || 0) + 1);
+  }
+  const known = new Set([...numbers.keys()]);
+  const describe = (row) => (row.get("Doc No") || "(no number)") + " — " + (row.get("Title") || "(no title)");
+
+  return [
+    {
+      title: "Duplicate document numbers",
+      items: [...numbers.entries()].filter(([, n]) => n > 1)
+        .map(([key, n]) => key.toUpperCase() + " appears " + n + " times"),
+    },
+    {
+      title: "Parent document not on the register",
+      items: rows.filter((r) => {
+        const parent = r.get("Parent Doc").trim().toLowerCase();
+        return parent && !known.has(parent);
+      }).map((r) => describe(r) + " → parent " + r.get("Parent Doc")),
+    },
+    {
+      title: "Approved with no location recorded",
+      items: rows.filter((r) => r.get("Status") === "Approved" && !r.get("Location").trim())
+        .map(describe),
+    },
+    {
+      title: "No owner assigned",
+      items: rows.filter((r) => !r.get("Owner").trim()).map(describe),
+    },
+    {
+      title: "Overdue for review",
+      items: rows.filter((r) => view.isOverdue(r))
+        .map((r) => describe(r) + " — due " + r.get("Next Review")),
+    },
+    {
+      title: "Documentation gaps (planned or in development)",
+      items: rows.filter((r) => ["Planned", "In Development"].includes(r.get("Status")))
+        .map((r) => describe(r) + " — " + r.get("Status")),
+    },
+  ];
+}
+
+function showChecks() {
+  const host = $("checks-body");
+  host.replaceChildren();
+  const results = runChecks();
+  const clean = results.every((r) => r.items.length === 0);
+
+  if (clean) {
+    host.append(el("p", "clean", "No integrity issues found across " + workbook.rows.length + " records."));
+  }
+  for (const result of results) {
+    host.append(el("h3", null, result.title + " (" + result.items.length + ")"));
+    if (!result.items.length) {
+      host.append(el("p", "clean", "None."));
+      continue;
+    }
+    const ul = document.createElement("ul");
+    for (const item of result.items) ul.append(el("li", null, item));
+    host.append(ul);
+  }
+  $("checks-scrim").classList.remove("hidden");
+}
+
+/* ================================== boot ================================== */
+async function refresh() {
+  await workbook.loadRows();
+  view.renderAll();
+}
+
+async function loadEverything() {
+  show("loading-view");
+  $("loading-msg").textContent = "Locating the workbook…";
+  await workbook.resolveFile();
+
+  $("loading-msg").textContent = "Opening " + workbook.fileName + "…";
+  await workbook.openSession();
+  await workbook.loadLists();
+  await workbook.loadRows();
+
+  const me = await graphFetch("/me?$select=displayName,userPrincipalName", { noSession: true })
+    .catch(() => null);
+  $("who-name").textContent = (me && me.displayName) || "Signed in";
+  $("who-mail").textContent = (me && me.userPrincipalName) || "";
+  $("file-label").textContent = workbook.fileName;
+  $("open-excel").href = workbook.webUrl || "#";
+
+  form.build();
+  view.renderAll();
+  show("app-view");
+}
+
+function showSetup() {
+  $("cfg-tenant").value = config.tenantId;
+  $("cfg-client").value = config.clientId;
+  $("cfg-host").value = config.hostname;
+  $("cfg-site").value = config.sitePath;
+  $("cfg-file").value = config.filePath;
+  $("cfg-sheet").value = config.sheetName;
+  $("cfg-table").value = config.tableName;
+  $("setup-redirect").textContent = "Redirect URI to register: " + redirectUri;
+  show("setup-view");
+}
+
+function showSignIn(message) {
+  $("signin-target").textContent = config.filePath
+    ? "Signs you in with your work account, then opens " + config.filePath + " on " + config.hostname + "."
+    : "Signs you in with your work account.";
+  const box = $("signin-error");
+  box.classList.toggle("hidden", !message);
+  if (message) box.textContent = message;
+  show("signin-view");
+}
+
+function wireUp() {
+  $("setup-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    config = {
+      tenantId: $("cfg-tenant").value.trim(),
+      clientId: $("cfg-client").value.trim(),
+      hostname: $("cfg-host").value.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, ""),
+      sitePath: $("cfg-site").value.trim(),
+      filePath: $("cfg-file").value.trim().replace(/^\//, ""),
+      sheetName: $("cfg-sheet").value.trim() || "Register",
+      tableName: $("cfg-table").value.trim() || "DocumentRegister",
+    };
+    localStorage.setItem(CFG_KEY, JSON.stringify(config));
+    auth.beginSignIn().catch((err) => showSignIn(err.message));
+  });
+
+  $("signin-btn").addEventListener("click", () => {
+    auth.beginSignIn().catch((err) => showSignIn(err.message));
+  });
+  $("signin-settings").addEventListener("click", showSetup);
+  $("signout-btn").addEventListener("click", () => auth.signOut());
+
+  $("new-btn").addEventListener("click", () => form.open(null));
+  $("cancel-btn").addEventListener("click", () => form.close());
+  $("save-btn").addEventListener("click", () => form.save());
+  $("delete-btn").addEventListener("click", () => form.remove());
+  $("record-form").addEventListener("submit", (e) => { e.preventDefault(); form.save(); });
+
+  $("checks-btn").addEventListener("click", showChecks);
+  $("checks-close").addEventListener("click", () => $("checks-scrim").classList.add("hidden"));
+
+  $("refresh-btn").addEventListener("click", async () => {
+    const button = $("refresh-btn");
+    button.disabled = true;
+    try {
+      await refresh();
+      toast("Reloaded from the workbook.", "ok");
+    } catch (e) {
+      toast(e.message, "bad");
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  for (const id of ["q", "f-status", "f-type", "f-function"]) {
+    $(id).addEventListener("input", () => view.renderRows());
+  }
+
+  for (const id of ["form-scrim", "checks-scrim"]) {
+    $(id).addEventListener("click", (e) => {
+      if (e.target.id === id) $(id).classList.add("hidden");
+    });
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    $("form-scrim").classList.add("hidden");
+    $("checks-scrim").classList.add("hidden");
+  });
+}
+
+async function boot() {
+  wireUp();
+
+  if (!window.isSecureContext) {
+    showSignIn("This page must be served over HTTPS (or from localhost). " +
+               "Sign-in uses browser cryptography that is unavailable otherwise.");
+    return;
+  }
+
+  auth.restore();
+
+  try {
+    const returned = await auth.completeSignIn();
+    if (!configComplete(config)) { showSetup(); return; }
+    if (!auth.signedIn() && !returned) { showSignIn(); return; }
+    await loadEverything();
+  } catch (e) {
+    if (!configComplete(config)) { showSetup(); return; }
+    const hint = e.status === 404
+      ? " Check the site path, the library path and the file name in the connection settings."
+      : "";
+    showSignIn(e.message + hint);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
